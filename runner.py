@@ -96,6 +96,7 @@ if __name__ == '__main__':
             _exec = processor.iterative_executor
         else:
             _exec = processor.futures_executor
+        uproot.open.defaults["xrootd_handler"] = uproot.source.xrootd.MultithreadedXRootDSource
         output = processor.run_uproot_job(sample_dict,
                                     treename='Events',
                                     processor_instance=processor_instance,
@@ -104,7 +105,8 @@ if __name__ == '__main__':
                                         'skipbadfiles':True,
                                         'schema': processor.NanoAODSchema, 
                                         'flatten':True, 
-                                        'workers': 4},
+                                        'workers': args.workers},
+                                        #'workers': 4},
                                     chunksize=args.chunk, maxchunks=args.max
                                     )
     elif args.executor == 'parsl':
