@@ -22,7 +22,7 @@ def validate(file):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run analysis on baconbits files using processor coffea files')
-    parser.add_argument( '--wf', '--workflow', dest='workflow', choices=['ttcom'], help='Which processor to run', required=True)
+    parser.add_argument( '--wf', '--workflow', dest='workflow', choices=['ttcom', 'bbtag'], help='Which processor to run', required=True)
     parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
     parser.add_argument('--samples', '--json', dest='samplejson', default='dummy_samples.json', help='JSON file containing dataset and file locations (default: %(default)s)')
 
@@ -85,6 +85,9 @@ if __name__ == '__main__':
     # Maybe this can be done better
     if args.workflow == "ttcom":
         from workflows.ttbar_validation import NanoProcessor
+        processor_instance = NanoProcessor()
+    elif args.workflow == "bbtag":
+        from workflows.bbtag_scalefactors import NanoProcessor
         processor_instance = NanoProcessor()
     else:
         raise NotImplemented
