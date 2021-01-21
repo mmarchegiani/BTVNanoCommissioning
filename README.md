@@ -63,3 +63,23 @@ Host *_f
 jupyter notebook --ip=127.0.0.1 --port 8800 --no-browser
 ```
 4. URL for notebook will be printed, copy and open in local browser
+
+## To be debugged currently
+Running the following command on the t3:
+```
+python runner.py --workflow bbtag --executor futures --samples proxy_samples_reduced.json --workers 10
+```
+gives the following error message:
+```
+ImportError: Install XRootD python bindings with:
+    conda install -c conda-forge xrootd
+```
+
+Running the following command on the t3:
+```
+python runner.py --workflow bbtag --executor dask/slurm --samples proxy_samples_reduced.json --workers 10
+```
+gives the following error message:
+```
+AttributeError: module 'yaml' has no attribute '__with_libyaml__'
+```
