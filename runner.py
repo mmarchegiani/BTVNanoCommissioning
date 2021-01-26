@@ -122,11 +122,12 @@ if __name__ == '__main__':
 
         if 'slurm' in args.executor:
             cluster = SLURMCluster(
-                queue='all',
+                #queue='all',
+                queue='wn',
                 cores=16,
                 processes=16,
                 memory="200 GB",
-                retries=10,
+                #retries=10,
                 walltime='00:30:00',
                 env_extra=['ulimit -u 32768'],
             )
