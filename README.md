@@ -12,7 +12,7 @@ along with the fileset these should run over. Multiple executors can be chosen
 
 To run the example, run:
 ```
-python runner.py --workflow ttcom
+python runner.py --workflow btag
 ```
 
 Example plots can be found in ` make_some_plots.ipynb` though we might want to make
@@ -30,56 +30,11 @@ NOTE: always make sure that conda, python, and pip point to local Miniconda inst
 
 You can either use the default environment`base` or create a new one:
 ```
-# create new environment with python 3.7, e.g. environment of name `coffea`
-conda create --name coffea python=3.7
-# activate environment `coffea`
-conda activate coffea
-```
-Install coffea and xrootd:
-```
-pip install git+https://github.com/CoffeaTeam/coffea.git #latest published release with `pip install coffea`
-conda install -c conda-forge xrootd
-```
-### Other installation options for coffea
-See https://coffeateam.github.io/coffea/installation.html
-### Running jupyter remotely
-See also https://hackmd.io/GkiNxag0TUmHnnCiqdND1Q#Remote-jupyter
+# create new environment from `environment.yml` file:
+conda env create -f environment.yml
+# activate environment `btv`:
+conda activate btv
+# install additional modules required on T3:
+pip install bokeh
+conda install dask
 
-1. On your local machine, edit `.ssh/config`:
-```
-Host lxplus*
-  HostName lxplus7.cern.ch
-  User <your-user-name>
-  ForwardX11 yes
-  ForwardAgent yes
-  ForwardX11Trusted yes
-Host *_f
-  LocalForward localhost:8800 localhost:8800
-  ExitOnForwardFailure yes
-```
-2. Connect to remote with `ssh lxplus_f`
-3. Start a jupyter notebook:
-```
-jupyter notebook --ip=127.0.0.1 --port 8800 --no-browser
-```
-4. URL for notebook will be printed, copy and open in local browser
-
-## To be debugged currently
-Running the following command on the t3:
-```
-python runner.py --workflow bbtag --executor futures --samples proxy_samples_reduced.json --workers 10
-```
-gives the following error message:
-```
-ImportError: Install XRootD python bindings with:
-    conda install -c conda-forge xrootd
-```
-
-Running the following command on the t3:
-```
-python runner.py --workflow bbtag --executor dask/slurm --samples proxy_samples_reduced.json --workers 10
-```
-gives the following error message:
-```
-AttributeError: module 'yaml' has no attribute '__with_libyaml__'
-```
