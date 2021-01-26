@@ -12,7 +12,7 @@ along with the fileset these should run over. Multiple executors can be chosen
 
 To run the example, run:
 ```
-python runner.py --workflow btag
+python runner.py --workflow BTVNanoCommissioning
 ```
 
 Example plots can be found in ` make_some_plots.ipynb` though we might want to make
@@ -37,4 +37,8 @@ conda activate btv
 # install additional modules required on T3:
 pip install bokeh
 conda install dask
-
+```
+Run the example on the T3 cluster:
+```
+python runner.py --workflow bbtag --executor dask/slurm --samples proxy_samples_reduced.json --workers 10
+```
