@@ -122,13 +122,11 @@ if __name__ == '__main__':
 
         if 'slurm' in args.executor:
             cluster = SLURMCluster(
-                #queue='all',
                 queue='wn',
                 cores=16,
                 processes=16,
-                memory="200 GB",
-                #retries=10,
-                walltime='00:30:00',
+                memory="32 GB",
+                walltime='05:00:00',
                 env_extra=['ulimit -u 32768'],
             )
         elif 'condor' in args.executor:
@@ -137,7 +135,7 @@ if __name__ == '__main__':
                  memory='2GB', 
                  disk='2GB', 
             )
-        cluster.scale(jobs=10)
+        cluster.scale(jobs=args.workers)
 
         print(cluster.job_script())
         client = Client(cluster)
