@@ -38,31 +38,39 @@ class NanoProcessor(processor.ProcessorABC):
         ljpt_axis     = hist.Bin("ljpt", r"Leading jet $p_{T}$ [GeV]", 100, 20, 400)
 
         # FatJet
-        fatjet_tau1_axis = hist.Bin("tau1",   r"FatJet $\tau_{1}$", 50, 0, 1)
-        fatjet_tau2_axis = hist.Bin("tau2",   r"FatJet $\tau_{2}$", 50, 0, 1)
+        fatjet_tau1_axis  = hist.Bin("tau1",   r"FatJet $\tau_{1}$", 50, 0, 1)
+        fatjet_tau2_axis  = hist.Bin("tau2",   r"FatJet $\tau_{2}$", 50, 0, 1)
         fatjet_tau21_axis = hist.Bin("tau21", r"FatJet $\tau_{21}$", 50, 0, 1)
-        fatjet_pt_axis   = hist.Bin("pt",   r"FatJet $p_{T}$ [GeV]", 250, 0, 1000)
-        fatjet_eta_axis  = hist.Bin("eta",  r"FatJet $\eta$", 60, -3, 3)
-        fatjet_phi_axis  = hist.Bin("phi",  r"FatJet $\phi$", 60, -3, 3)
-        fatjet_mass_axis = hist.Bin("mass", r"FatJet $m$ [GeV]", 300, 0, 300)
+        fatjet_pt_axis    = hist.Bin("pt",   r"FatJet $p_{T}$ [GeV]", 250, 0, 1000)
+        fatjet_eta_axis   = hist.Bin("eta",  r"FatJet $\eta$", 60, -3, 3)
+        fatjet_phi_axis   = hist.Bin("phi",  r"FatJet $\phi$", 60, -3, 3)
+        fatjet_mass_axis  = hist.Bin("mass", r"FatJet $m_{SD}$ [GeV]", 300, 0, 300)
         #lfjpt_axis     = hist.Bin("lfjpt", r"Leading fatjet $p_{T}$ [GeV]", 250, 0, 1000)
+
+        # cc FatJet
+        ccfatjet_tau1_axis  = hist.Bin("tau1",   r"cc FatJet $\tau_{1}$", 50, 0, 1)
+        ccfatjet_tau2_axis  = hist.Bin("tau2",   r"cc FatJet $\tau_{2}$", 50, 0, 1)
+        ccfatjet_tau21_axis = hist.Bin("tau21", r"cc FatJet $\tau_{21}$", 50, 0, 1)
+        ccfatjet_pt_axis    = hist.Bin("pt",   r"cc FatJet $p_{T}$ [GeV]", 250, 0, 1000)
+        ccfatjet_eta_axis   = hist.Bin("eta",  r"cc FatJet $\eta$", 60, -3, 3)
+        ccfatjet_phi_axis   = hist.Bin("phi",  r"cc FatJet $\phi$", 60, -3, 3)
+        ccfatjet_mass_axis  = hist.Bin("mass", r"cc FatJet $m_{SD}$ [GeV]", 300, 0, 300)
 
         # Define similar axes dynamically
         disc_list = ["btagCMVA", "btagCSVV2", 'btagDeepB', 'btagDeepC', 'btagDeepFlavB', 'btagDeepFlavC',]
         disc_list_fj = ['btagDDBvLV2', 'btagDDCvLV2', 'btagDDCvBV2',]
         btag_axes = []
         btag_axes_fj = []
+        btag_axes_ccfj = []
         for d in disc_list:
             btag_axes.append(hist.Bin(d, d, 50, 0, 1))
         for d in disc_list_fj:
             btag_axes_fj.append(hist.Bin(d, d, 50, 0, 1))
+        for d in disc_list_fj:
+            btag_axes_ccfj.append(hist.Bin(d, d, 50, 0, 1))
 
         # Define histograms from axes
         _hist_jet_dict = {
-                #'jet_nocuts_pt'  : hist.Hist("Counts", dataset_axis, jet_pt_axis),
-                #'jet_nocuts_eta' : hist.Hist("Counts", dataset_axis, jet_eta_axis),
-                #'jet_nocuts_phi' : hist.Hist("Counts", dataset_axis, jet_phi_axis),
-                #'jet_nocuts_mass': hist.Hist("Counts", dataset_axis, jet_mass_axis),
                 'jet_pt'  : hist.Hist("Counts", dataset_axis, jet_pt_axis),
                 'jet_eta' : hist.Hist("Counts", dataset_axis, jet_eta_axis),
                 'jet_phi' : hist.Hist("Counts", dataset_axis, jet_phi_axis),
@@ -70,26 +78,33 @@ class NanoProcessor(processor.ProcessorABC):
             }
         
         _hist_fatjet_dict = {
-                'tau1'  : hist.Hist("Counts", dataset_axis, fatjet_tau1_axis),
-                'tau2'  : hist.Hist("Counts", dataset_axis, fatjet_tau2_axis),
-                'tau21' : hist.Hist("Counts", dataset_axis, fatjet_tau21_axis),
-                #'fatjet_nocuts_pt'  : hist.Hist("Counts", dataset_axis, fatjet_pt_axis),
-                #'fatjet_nocuts_eta' : hist.Hist("Counts", dataset_axis, fatjet_eta_axis),
-                #'fatjet_nocuts_phi' : hist.Hist("Counts", dataset_axis, fatjet_phi_axis),
-                #'fatjet_nocuts_mass': hist.Hist("Counts", dataset_axis, fatjet_mass_axis),
+                'fatjet_tau1'  : hist.Hist("Counts", dataset_axis, fatjet_tau1_axis),
+                'fatjet_tau2'  : hist.Hist("Counts", dataset_axis, fatjet_tau2_axis),
+                'fatjet_tau21' : hist.Hist("Counts", dataset_axis, fatjet_tau21_axis),
                 'fatjet_pt'  : hist.Hist("Counts", dataset_axis, fatjet_pt_axis),
                 'fatjet_eta' : hist.Hist("Counts", dataset_axis, fatjet_eta_axis),
                 'fatjet_phi' : hist.Hist("Counts", dataset_axis, fatjet_phi_axis),
                 'fatjet_mass': hist.Hist("Counts", dataset_axis, fatjet_mass_axis),
             }
+
+        _hist_ccfatjet_dict = {
+                'ccfatjet_tau1'  : hist.Hist("Counts", dataset_axis, ccfatjet_tau1_axis),
+                'ccfatjet_tau2'  : hist.Hist("Counts", dataset_axis, ccfatjet_tau2_axis),
+                'ccfatjet_tau21' : hist.Hist("Counts", dataset_axis, ccfatjet_tau21_axis),
+                'ccfatjet_pt'  : hist.Hist("Counts", dataset_axis, ccfatjet_pt_axis),
+                'ccfatjet_eta' : hist.Hist("Counts", dataset_axis, ccfatjet_eta_axis),
+                'ccfatjet_phi' : hist.Hist("Counts", dataset_axis, ccfatjet_phi_axis),
+                'ccfatjet_mass': hist.Hist("Counts", dataset_axis, ccfatjet_mass_axis),
+            }
         
-        #_hist_fatjet_dict = {}
 
         # Generate some histograms dynamically
         for disc, axis in zip(disc_list, btag_axes):
             _hist_jet_dict[disc] = hist.Hist("Counts", dataset_axis, axis)
         for disc, axis in zip(disc_list_fj, btag_axes_fj):
             _hist_fatjet_dict[disc] = hist.Hist("Counts", dataset_axis, axis)
+        for disc, axis in zip(disc_list_fj, btag_axes_ccfj):
+            _hist_ccfatjet_dict[disc] = hist.Hist("Counts", dataset_axis, axis)
 
         _hist_event_dict = {
                 'njet'  : hist.Hist("Counts", dataset_axis, njet_axis),
@@ -104,9 +119,10 @@ class NanoProcessor(processor.ProcessorABC):
 
         self.jet_hists = list(_hist_jet_dict.keys())
         self.fatjet_hists = list(_hist_fatjet_dict.keys())
+        self.ccfatjet_hists = list(_hist_ccfatjet_dict.keys())
         self.event_hists = list(_hist_event_dict.keys())
 
-        _hist_dict = {**_hist_jet_dict, **_hist_fatjet_dict, **_hist_event_dict}
+        _hist_dict = {**_hist_jet_dict, **_hist_fatjet_dict, **_hist_ccfatjet_dict, **_hist_event_dict}
         self._accumulator = processor.dict_accumulator(_hist_dict)
 
 
@@ -134,7 +150,7 @@ class NanoProcessor(processor.ProcessorABC):
         ############
         # Event level
         baseline_jet    = {var : ak.flatten(events.Jet[var], axis=None) for var in ['pt', 'eta', 'phi', 'mass']}
-        baseline_fatjet = {var : ak.flatten(events.FatJet[var], axis=None) for var in ['pt', 'eta', 'phi', 'mass']}
+        baseline_fatjet = {var : ak.flatten(events.FatJet[var], axis=None) for var in ['pt', 'eta', 'phi', 'msoftdrop']}
 
         ## Muon cuts
         # muon twiki: https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonIdRun2
@@ -194,31 +210,38 @@ class NanoProcessor(processor.ProcessorABC):
         bjet_disc  = selev.Jet.btagDeepB > 0.7264 # L=0.0494, M=0.2770, T=0.7264
         bjet_level = jet_level & bjet_disc
 
+        # Selecting cc FatJet
+        hadronFlavour = (abs(selev.FatJet.hadronFlavour == 4))
+        nBHadrons = (selev.FatJet.nBHadrons == 0)
+        nCHadrons = (selev.FatJet.nCHadrons >= 2)
+
+        ccfatjet_level = fatjet_level & hadronFlavour & nBHadrons & nCHadrons
 
         sel    = selev.Electron[el_level]
         smu    = selev.Muon[mu_level]
         sjets  = selev.Jet[jet_level]
         sbjets = selev.Jet[bjet_level]
         sfatjets = selev.FatJet[fatjet_level]
+        sccfatjets = selev.FatJet[ccfatjet_level]
         sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
+        sccfatjets['tau21'] = sccfatjets.tau2/sccfatjets.tau1
 
         # output['pt'].fill(dataset=dataset, pt=selev.Jet.pt.flatten())
         # Fill histograms dynamically
         for histname, h in output.items():
-            if histname not in self.jet_hists: continue
-            # Get valid fields perhistogram to fill
-            fields = {k: ak.flatten(sjets[k], axis=None) for k in h.fields if k in dir(sjets)}
-            fields.update({k: ak.flatten(sjets[k], axis=None) for k in h.fields if k.split('jet_')[-1] in ['pt', 'eta', 'phi', 'mass']})
-            #fields.update({k: ak.flatten(baseline_jet[k], axis=None) for k in h.fields if k.split('jet_nocuts_')[-1] in ['pt', 'eta', 'phi', 'mass']})
-            h.fill(dataset=dataset, **fields)
-
-        for histname, h in output.items():
-            if histname not in self.fatjet_hists: continue
-            # Get valid fields perhistogram to fill
-            fields = {k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k in dir(sfatjets)}
-            fields.update({k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'mass']})
-            #fields.update({k: ak.flatten(baseline_fatjet[k], axis=None) for k in h.fields if k.split('fatjet_nocuts_')[-1] in ['pt', 'eta', 'phi', 'mass']})
-            h.fill(dataset=dataset, **fields)
+            if histname in self.jet_hists:
+                fields = {k: ak.flatten(sjets[k], axis=None) for k in h.fields if k in dir(sjets)}
+                fields.update({k: ak.flatten(sjets[k], axis=None) for k in h.fields if k.split('jet_')[-1] in ['pt', 'eta', 'phi', 'mass']})
+                h.fill(dataset=dataset, **fields)
+            elif histname in self.fatjet_hists:
+                fields = {k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k in dir(sfatjets)}
+                fields.update({k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
+                h.fill(dataset=dataset, **fields)
+            elif histname in self.ccfatjet_hists:
+                fields = {k: ak.flatten(sccfatjets[k], axis=None) for k in h.fields if k in dir(sccfatjets)}
+                fields.update({k: ak.flatten(sccfatjets[k], axis=None) for k in h.fields if k.split('ccfatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
+                h.fill(dataset=dataset, **fields)
+            else: continue
 
         def flatten(ar): # flatten awkward into a 1d array to hist
             return ak.flatten(ar, axis=None)
