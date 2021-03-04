@@ -2,6 +2,7 @@ import coffea
 from coffea import hist, processor
 import numpy as np
 import awkward1 as ak
+from utils import rescale, get_nsv, lumi, xsecs
 
 
 class NanoProcessor(processor.ProcessorABC):
@@ -13,22 +14,15 @@ class NanoProcessor(processor.ProcessorABC):
         cutflow_axis   = hist.Cat("cut",   "Cut")
 
         # Events
-        nel_axis   = hist.Bin("nel",   r"N electrons", [0,1,2,3,4,5,6,7,8,9,10])
-        nmu_axis   = hist.Bin("nmu",   r"N muons",     [0,1,2,3,4,5,6,7,8,9,10])
-        njet_axis  = hist.Bin("njet",  r"N jets",      [0,1,2,3,4,5,6,7,8,9,10])
-        nbjet_axis = hist.Bin("nbjet", r"N b-jets",    [0,1,2,3,4,5,6,7,8,9,10])
-
-        # Electron
-        el_pt_axis   = hist.Bin("pt",    r"Electron $p_{T}$ [GeV]", 100, 20, 400)
-        el_eta_axis  = hist.Bin("eta",   r"$\eta$", 60, -3, 3)
-        el_phi_axis  = hist.Bin("phi",   r"$\phi$", 60, -3, 3)
-        lelpt_axis   = hist.Bin("lelpt", r"Leading electron $p_{T}$ [GeV]", 100, 20, 200)
-
-        # Muons
-        mu_pt_axis   = hist.Bin("pt",    r"Muon $p_{T}$ [GeV]", 100, 20, 400)
-        mu_eta_axis  = hist.Bin("eta",   r"$\eta$", 60, -3, 3)
-        mu_phi_axis  = hist.Bin("phi",   r"$\phi$", 60, -3, 3)
-        lmupt_axis   = hist.Bin("lmupt", r"Leading muon $p_{T}$ [GeV]", 100, 20, 200)
+        nel_axis     = hist.Bin("nel",   r"N electrons",     [0,1,2,3,4,5,6,7,8,9,10])
+        nmu_axis     = hist.Bin("nmu",   r"N muons",         [0,1,2,3,4,5,6,7,8,9,10])
+        njet_axis    = hist.Bin("njet",  r"N jets",          [0,1,2,3,4,5,6,7,8,9,10])
+        nbjet_axis   = hist.Bin("nbjet", r"N b-jets",        [0,1,2,3,4,5,6,7,8,9,10])
+        nfatjet_axis = hist.Bin("nfatjet",  r"N fatjets",    [0,1,2,3,4,5,6,7,8,9,10])
+        nmusj1_axis  = hist.Bin("nmusj1",  r"$N_{mu}$(sj1)", 30, 0, 30)
+        nmusj2_axis  = hist.Bin("nmusj2",  r"$N_{mu}$(sj2)", 30, 0, 30)
+        nsv1_axis    = hist.Bin("nsv1",  r"$N_{SV}$(sj1)",   30, 0, 30)
+        nsv2_axis    = hist.Bin("nsv2",  r"$N_{SV}$(sj2)",   30, 0, 30)
 
         # Jet
         jet_pt_axis   = hist.Bin("pt",   r"Jet $p_{T}$ [GeV]", 100, 20, 400)
@@ -38,23 +32,23 @@ class NanoProcessor(processor.ProcessorABC):
         ljpt_axis     = hist.Bin("ljpt", r"Leading jet $p_{T}$ [GeV]", 100, 20, 400)
 
         # FatJet
-        fatjet_tau1_axis  = hist.Bin("tau1",   r"FatJet $\tau_{1}$", 50, 0, 1)
-        fatjet_tau2_axis  = hist.Bin("tau2",   r"FatJet $\tau_{2}$", 50, 0, 1)
-        fatjet_tau21_axis = hist.Bin("tau21", r"FatJet $\tau_{21}$", 50, 0, 1)
-        fatjet_pt_axis    = hist.Bin("pt",   r"FatJet $p_{T}$ [GeV]", 250, 0, 1000)
-        fatjet_eta_axis   = hist.Bin("eta",  r"FatJet $\eta$", 60, -3, 3)
-        fatjet_phi_axis   = hist.Bin("phi",  r"FatJet $\phi$", 60, -3, 3)
-        fatjet_mass_axis  = hist.Bin("mass", r"FatJet $m_{SD}$ [GeV]", 300, 0, 300)
+        fatjet_tau1_axis  = hist.Bin("tau1",   r"lead. FatJet $\tau_{1}$", 50, 0, 1)
+        fatjet_tau2_axis  = hist.Bin("tau2",   r"lead. FatJet $\tau_{2}$", 50, 0, 1)
+        fatjet_tau21_axis = hist.Bin("tau21", r"lead. FatJet $\tau_{21}$", 50, 0, 1)
+        fatjet_pt_axis    = hist.Bin("pt",   r"lead. FatJet $p_{T}$ [GeV]", 250, 0, 1000)
+        fatjet_eta_axis   = hist.Bin("eta",  r"lead. FatJet $\eta$", 60, -3, 3)
+        fatjet_phi_axis   = hist.Bin("phi",  r"lead. FatJet $\phi$", 60, -3, 3)
+        fatjet_mass_axis  = hist.Bin("mass", r"lead. FatJet $m_{SD}$ [GeV]", 300, 0, 300)
         #lfjpt_axis     = hist.Bin("lfjpt", r"Leading fatjet $p_{T}$ [GeV]", 250, 0, 1000)
 
         # cc FatJet
-        ccfatjet_tau1_axis  = hist.Bin("tau1",   r"cc FatJet $\tau_{1}$", 50, 0, 1)
-        ccfatjet_tau2_axis  = hist.Bin("tau2",   r"cc FatJet $\tau_{2}$", 50, 0, 1)
-        ccfatjet_tau21_axis = hist.Bin("tau21", r"cc FatJet $\tau_{21}$", 50, 0, 1)
-        ccfatjet_pt_axis    = hist.Bin("pt",   r"cc FatJet $p_{T}$ [GeV]", 250, 0, 1000)
-        ccfatjet_eta_axis   = hist.Bin("eta",  r"cc FatJet $\eta$", 60, -3, 3)
-        ccfatjet_phi_axis   = hist.Bin("phi",  r"cc FatJet $\phi$", 60, -3, 3)
-        ccfatjet_mass_axis  = hist.Bin("mass", r"cc FatJet $m_{SD}$ [GeV]", 300, 0, 300)
+        ccfatjet_tau1_axis  = hist.Bin("tau1",   r"lead. cc FatJet $\tau_{1}$", 50, 0, 1)
+        ccfatjet_tau2_axis  = hist.Bin("tau2",   r"lead. cc FatJet $\tau_{2}$", 50, 0, 1)
+        ccfatjet_tau21_axis = hist.Bin("tau21", r"lead. cc FatJet $\tau_{21}$", 50, 0, 1)
+        ccfatjet_pt_axis    = hist.Bin("pt",   r"lead. cc FatJet $p_{T}$ [GeV]", 250, 0, 1000)
+        ccfatjet_eta_axis   = hist.Bin("eta",  r"lead. cc FatJet $\eta$", 60, -3, 3)
+        ccfatjet_phi_axis   = hist.Bin("phi",  r"lead. cc FatJet $\phi$", 60, -3, 3)
+        ccfatjet_mass_axis  = hist.Bin("mass", r"lead. cc FatJet $m_{SD}$ [GeV]", 300, 0, 300)
 
         # Define similar axes dynamically
         disc_list = ["btagCMVA", "btagCSVV2", 'btagDeepB', 'btagDeepC', 'btagDeepFlavB', 'btagDeepFlavC',]
@@ -107,14 +101,19 @@ class NanoProcessor(processor.ProcessorABC):
             _hist_ccfatjet_dict[disc] = hist.Hist("Counts", dataset_axis, axis)
 
         _hist_event_dict = {
-                'njet'  : hist.Hist("Counts", dataset_axis, njet_axis),
-                'nbjet' : hist.Hist("Counts", dataset_axis, nbjet_axis),
-                'nel'   : hist.Hist("Counts", dataset_axis, nel_axis),
-                'nmu'   : hist.Hist("Counts", dataset_axis, nmu_axis),
-                #'lelpt' : hist.Hist("Counts", dataset_axis, lelpt_axis),
-                #'lmupt' : hist.Hist("Counts", dataset_axis, lmupt_axis),
-                #'ljpt'  : hist.Hist("Counts", dataset_axis, ljpt_axis),
-                #'lfjpt' : hist.Hist("Counts", dataset_axis, lfjpt_axis),
+                'njet'   : hist.Hist("Counts", dataset_axis, njet_axis),
+                'nbjet'  : hist.Hist("Counts", dataset_axis, nbjet_axis),
+                'nel'    : hist.Hist("Counts", dataset_axis, nel_axis),
+                'nmu'    : hist.Hist("Counts", dataset_axis, nmu_axis),
+                'nfatjet': hist.Hist("Counts", dataset_axis, nfatjet_axis),
+                'nmusj1' : hist.Hist("Counts", dataset_axis, nmusj1_axis),
+                'nmusj2' : hist.Hist("Counts", dataset_axis, nmusj2_axis),
+                'nsv1'   : hist.Hist("Counts", dataset_axis, nsv1_axis),
+                'nsv2'   : hist.Hist("Counts", dataset_axis, nsv2_axis),
+            }
+        _sumw_dict = {'sumw': processor.defaultdict_accumulator(float),
+                      'nbtagmu': processor.defaultdict_accumulator(float),
+                      'nbtagmu_event_level': processor.defaultdict_accumulator(float),
             }
 
         self.jet_hists = list(_hist_jet_dict.keys())
@@ -122,7 +121,7 @@ class NanoProcessor(processor.ProcessorABC):
         self.ccfatjet_hists = list(_hist_ccfatjet_dict.keys())
         self.event_hists = list(_hist_event_dict.keys())
 
-        _hist_dict = {**_hist_jet_dict, **_hist_fatjet_dict, **_hist_ccfatjet_dict, **_hist_event_dict}
+        _hist_dict = {**_hist_jet_dict, **_hist_fatjet_dict, **_hist_ccfatjet_dict, **_hist_event_dict, **_sumw_dict}
         self._accumulator = processor.dict_accumulator(_hist_dict)
 
 
@@ -132,14 +131,22 @@ class NanoProcessor(processor.ProcessorABC):
 
     def process(self, events):
         output = self.accumulator.identity()
-
+        
         dataset = events.metadata['dataset']
+
+        isRealData = 'genWeight' not in events.fields
+        if not isRealData:
+            output['sumw'][dataset] += sum(events.genWeight)
+        else:
+            output['nbtagmu'][dataset] += ak.count(events.event)
 
         ##############
         # Trigger level
         triggers = [
         #"HLT_Mu12_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ",
         "HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ",
+        "HLT_BTagMu_AK8Jet300_Mu5",
+        "HLT_BTagMu_AK4Jet300_Mu5",
         ]
 
         trig_arrs = [events.HLT[_trig.strip("HLT_")] for _trig in triggers]
@@ -154,13 +161,15 @@ class NanoProcessor(processor.ProcessorABC):
 
         ## Muon cuts
         # muon twiki: https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonIdRun2
-        events.Muon = events.Muon[(events.Muon.pt > 30) & (abs(events.Muon.eta < 2.4))] # & (events.Muon.tightId > .5)
+        #events.Muon = events.Muon[(events.Muon.pt > 30) & (abs(events.Muon.eta < 2.4))] # & (events.Muon.tightId > .5)
+        events.Muon = events.Muon[(events.Muon.pt > 10) & (abs(events.Muon.eta < 2.4))] # & (events.Muon.tightId > .5)
         events.Muon = ak.pad_none(events.Muon, 1, axis=1)
         #req_muon =(ak.count(events.Muon.pt, axis=1) == 1)
 
         ## Electron cuts
         # electron twiki: https://twiki.cern.ch/twiki/bin/viewauth/CMS/CutBasedElectronIdentificationRun2
-        events.Electron = events.Electron[(events.Electron.pt > 30) & (abs(events.Electron.eta) < 2.4)]
+        #events.Electron = events.Electron[(events.Electron.pt > 30) & (abs(events.Electron.eta) < 2.4)]
+        events.Electron = events.Electron[(events.Electron.pt > 10) & (abs(events.Electron.eta) < 2.4)]
         events.Electron = ak.pad_none(events.Electron, 1, axis=1)
         #req_ele = (ak.count(events.Electron.pt, axis=1) == 1)
 
@@ -185,12 +194,12 @@ class NanoProcessor(processor.ProcessorABC):
 
         # Per electron
         el_eta   = (abs(selev.Electron.eta) <= 2.4)
-        el_pt    = selev.Electron.pt > 30
+        el_pt    = selev.Electron.pt > 10
         el_level = el_eta & el_pt
 
         # Per muon
         mu_eta   = (abs(selev.Muon.eta) <= 2.4)
-        mu_pt    = selev.Muon.pt > 30
+        mu_pt    = selev.Muon.pt > 10
         mu_level = mu_eta & mu_pt
 
         # Per jet
@@ -211,20 +220,31 @@ class NanoProcessor(processor.ProcessorABC):
         bjet_level = jet_level & bjet_disc
 
         # Selecting cc FatJet
-        hadronFlavour = (abs(selev.FatJet.hadronFlavour == 4))
-        nBHadrons = (selev.FatJet.nBHadrons == 0)
-        nCHadrons = (selev.FatJet.nCHadrons >= 2)
+        if not isRealData:
+            hadronFlavour = (abs(selev.FatJet.hadronFlavour == 4))
+            nBHadrons = (selev.FatJet.nBHadrons == 0)
+            nCHadrons = (selev.FatJet.nCHadrons >= 2)
+            ccfatjet_level = fatjet_level & hadronFlavour & nBHadrons & nCHadrons
+        else:
+            output['nbtagmu_event_level'][dataset] += ak.count_nonzero(event_level)
 
-        ccfatjet_level = fatjet_level & hadronFlavour & nBHadrons & nCHadrons
-
-        sel    = selev.Electron[el_level]
-        smu    = selev.Muon[mu_level]
-        sjets  = selev.Jet[jet_level]
-        sbjets = selev.Jet[bjet_level]
-        sfatjets = selev.FatJet[fatjet_level]
-        sccfatjets = selev.FatJet[ccfatjet_level]
+        sel      = selev.Electron[el_level]
+        smu      = selev.Muon[mu_level]
+        sjets    = selev.Jet[jet_level]
+        sbjets   = selev.Jet[bjet_level]
+        sfatjets = selev.FatJet[fatjet_level][:,0]
         sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
-        sccfatjets['tau21'] = sccfatjets.tau2/sccfatjets.tau1
+        subjet1  = ak.pad_none(sfatjets.subjets, 2)[:, 0]
+        subjet2  = ak.pad_none(sfatjets.subjets, 2)[:, 1]
+        SV       = selev.SV
+        nsv1     = get_nsv(subjet1, SV)
+        nsv2     = get_nsv(subjet2, SV)
+        nmusj1   = ak.num(subjet1.delta_r(smu) < 0.4)
+        nmusj2   = ak.num(subjet2.delta_r(smu) < 0.4)
+
+        if not isRealData:
+            sccfatjets = ak.pad_none(selev.FatJet[ccfatjet_level], 1)[:,0]
+            sccfatjets['tau21'] = sccfatjets.tau2/sccfatjets.tau1
 
         # output['pt'].fill(dataset=dataset, pt=selev.Jet.pt.flatten())
         # Fill histograms dynamically
@@ -237,7 +257,7 @@ class NanoProcessor(processor.ProcessorABC):
                 fields = {k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k in dir(sfatjets)}
                 fields.update({k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
                 h.fill(dataset=dataset, **fields)
-            elif histname in self.ccfatjet_hists:
+            elif ((histname in self.ccfatjet_hists) & (not isRealData)):
                 fields = {k: ak.flatten(sccfatjets[k], axis=None) for k in h.fields if k in dir(sccfatjets)}
                 fields.update({k: ak.flatten(sccfatjets[k], axis=None) for k in h.fields if k.split('ccfatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
                 h.fill(dataset=dataset, **fields)
@@ -253,13 +273,17 @@ class NanoProcessor(processor.ProcessorABC):
         output['nbjet'].fill(dataset=dataset, nbjet=num(sbjets))
         output['nel'].fill(dataset=dataset,   nel=num(sel))
         output['nmu'].fill(dataset=dataset,   nmu=num(smu))
-
-        #output['lelpt'].fill(dataset=dataset, lelpt=flatten(selev.Electron[:, 0].pt))
-        #output['lmupt'].fill(dataset=dataset, lmupt=flatten(selev.Muon[:, 0].pt))
-        #output['ljpt'].fill(dataset=dataset,  ljpt=flatten(selev.Jet[:, 0].pt))
-        #output['lfjpt'].fill(dataset=dataset,  ljpt=flatten(selev.FatJet[:, 0].pt))
+        output['nfatjet'].fill(dataset=dataset,  nfatjet=num(sfatjets))
+        output['nmusj1'].fill(dataset=dataset,  nmusj1=flatten(nmusj1))
+        output['nmusj2'].fill(dataset=dataset,  nmusj2=flatten(nmusj2))
+        output['nsv1'].fill(dataset=dataset,  nsv1=ak.fill_none(nsv1, -1))
+        output['nsv2'].fill(dataset=dataset,  nsv2=ak.fill_none(nsv2, -1))
 
         return output
 
     def postprocess(self, accumulator):
+
+        #accumulator = rescale(accumulator, xsecs, lumi[args.year])
+        accumulator = rescale(accumulator, xsecs, lumi[2017])
+
         return accumulator
