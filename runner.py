@@ -220,7 +220,7 @@ if __name__ == '__main__':
 										chunksize=args.chunk, maxchunks=args.max
 							)
 
-	save(output, args.output)
+	save(output, "histograms/" + args.output)
   
 	print(output)
-	print(f"Saving output to {args.output}")
+	print(f"Saving output to histograms/{args.output}")
