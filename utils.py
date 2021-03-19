@@ -26,11 +26,14 @@ xsecs = {
     "GluGluHToCC_M-125_13TeV"  : 27.8,
 }
 
-def rescale(accumulator, xsec, lumi):
+def rescale(accumulator, xsecs, lumi, data="BTagMu"):
     """Scale by lumi"""
     lumi = 1000*lumi    # Convert lumi to pb^-1
     from coffea import hist
     scale = {}
+    norm = 1./ak.sum(accumulator['fatjet_pt'][data].values().values())
+    scaletodata = {dataset : norm for dataset in xsecs.keys()}
+    print("scaletodata:", scaletodata)
     print("Scaling:")
     for dataset, dataset_sumw in collections.OrderedDict(sorted(accumulator['sumw'].items())).items():
         #dataset_key = dataset.lstrip("/").split("/")[0]
@@ -41,10 +44,12 @@ def rescale(accumulator, xsec, lumi):
         else:
             print(" ", "X ", dataset_key)
             scale[dataset] = 0#lumi / dataset_sumw
+            scaletodata[dataset] = 0
 
     for h in accumulator.values():
         if isinstance(h, hist.Hist):
-            h.scale(scale, axis="dataset")
+            h.scale(scale,       axis="dataset")
+            h.scale(scaletodata, axis="dataset")
     return accumulator
 
 def get_nsv(sj, sv, R=0.4):
