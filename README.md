@@ -30,8 +30,8 @@ NOTE: always make sure that conda, python, and pip point to local Miniconda inst
 
 You can either use the default environment`base` or create a new one:
 ```
-# create new environment from `environment.yml` file:
-conda env create -f environment.yml
+# create new environment from `conda_env.yml` file:
+conda env create -f conda_env.yml
 # activate environment `btv`:
 conda activate btv
 # install additional modules required on T3:
@@ -40,5 +40,5 @@ conda install dask
 ```
 Run the example on the T3 cluster:
 ```
-python runner.py --workflow bbtag --executor dask/slurm --samples proxy_samples_reduced.json --workers 10
+python runner.py --workflow fattag --executor parsl/slurm --samples datasets_local_fixed.json --output hists_fattag.coffea -s 10
 ```
