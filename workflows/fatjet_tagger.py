@@ -14,7 +14,7 @@ class NanoProcessor(processor.ProcessorABC):
         flavor_axis  = hist.Cat("flavor",   "Flavor")
 
         # Events
-        nel_axis     = hist.Bin("nel",   r"N electrons",     [0,1,2,3,4,5,6,7,8,9,10])
+        #nel_axis     = hist.Bin("nel",   r"N electrons",     [0,1,2,3,4,5,6,7,8,9,10])
         nmu_axis     = hist.Bin("nmu",   r"N muons",         [0,1,2,3,4,5,6,7,8,9,10])
         njet_axis    = hist.Bin("njet",  r"N jets",          [0,1,2,3,4,5,6,7,8,9,10])
         nbjet_axis   = hist.Bin("nbjet", r"N b-jets",        [0,1,2,3,4,5,6,7,8,9,10])
@@ -91,7 +91,7 @@ class NanoProcessor(processor.ProcessorABC):
         _hist_event_dict = {
                 'njet'   : hist.Hist("Counts", dataset_axis, njet_axis),
                 'nbjet'  : hist.Hist("Counts", dataset_axis, nbjet_axis),
-                'nel'    : hist.Hist("Counts", dataset_axis, nel_axis),
+                #'nel'    : hist.Hist("Counts", dataset_axis, nel_axis),
                 'nmu'    : hist.Hist("Counts", dataset_axis, nmu_axis),
                 'nfatjet': hist.Hist("Counts", dataset_axis, flavor_axis, nfatjet_axis),
                 'nmusj1' : hist.Hist("Counts", dataset_axis, flavor_axis, nmusj1_axis),
@@ -149,16 +149,9 @@ class NanoProcessor(processor.ProcessorABC):
         ## Muon cuts
         # muon twiki: https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonIdRun2
         #events.Muon = events.Muon[(events.Muon.pt > 30) & (abs(events.Muon.eta < 2.4))] # & (events.Muon.tightId > .5)
-        events.Muon = events.Muon[(events.Muon.pt > 5) & (abs(events.Muon.eta < 2.4)) & (events.Muon.tightId != 1)] 
-        events.Muon = ak.pad_none(events.Muon, 1, axis=1)
-        #req_muon =(ak.count(events.Muon.pt, axis=1) == 1)
-
-        ## Electron cuts
-        # electron twiki: https://twiki.cern.ch/twiki/bin/viewauth/CMS/CutBasedElectronIdentificationRun2
-        #events.Electron = events.Electron[(events.Electron.pt > 30) & (abs(events.Electron.eta) < 2.4)]
-        events.Electron = events.Electron[(events.Electron.pt > 10) & (abs(events.Electron.eta) < 2.4)]
-        events.Electron = ak.pad_none(events.Electron, 1, axis=1)
-        #req_ele = (ak.count(events.Electron.pt, axis=1) == 1)
+        events.Muon = events.Muon[(events.Muon.pt > 5) & (abs(events.Muon.eta < 2.4)) & (events.Muon.tightId != 1) & (events.Muon.pfRelIso04_all > 0.15)]
+        #events.Muon = ak.pad_none(events.Muon, 2, axis=1)
+        req_muons =(ak.count(events.Muon.pt, axis=1) >= 2)
 
         ## Jet cuts
         events.Jet = events.Jet[(events.Jet.pt > 25) & (abs(events.Jet.eta) <= 2.5)]
@@ -168,25 +161,25 @@ class NanoProcessor(processor.ProcessorABC):
         events.FatJet = events.FatJet[(events.FatJet.pt > 250) & (events.FatJet.mass > 20)]
         #events.FatJet['tau21'] = events.FatJet.tau2/events.FatJet.tau1
         req_fatjets = (ak.count(events.FatJet.pt, axis=1) >= 1)
+        req_subjets = ak.any(ak.count(events.FatJet.subjets.pt, axis=2) >= 2, axis=1)
 
         #req_opposite_charge = events.Electron[:, 0].charge * events.Muon[:, 0].charge == -1
 
-        event_level = req_trig & req_fatjets #& req_subjets
+        event_level = req_trig & req_muons & req_fatjets & req_subjets
 
         # Selected
         selev = events[event_level]
 
         #########
 
-        # Per electron
-        el_eta   = (abs(selev.Electron.eta) <= 2.4)
-        el_pt    = selev.Electron.pt > 10
-        el_level = el_eta & el_pt
-
         # Per muon
         mu_eta   = (abs(selev.Muon.eta) <= 2.4)
-        mu_pt    = selev.Muon.pt > 10
-        mu_level = mu_eta & mu_pt
+        mu_pt    = selev.Muon.pt > 5
+        mu_not_iso = (selev.Muon.pfRelIso04_all > 0.15)
+        mu_not_tight = (selev.Muon.tightId != 1)
+        mu_level = mu_eta & mu_pt & mu_not_iso & mu_not_tight
+
+        smu      = selev.Muon[mu_level]
 
         # Per jet
         jet_eta    = (abs(selev.Jet.eta) <= 2.4)
@@ -207,19 +200,30 @@ class NanoProcessor(processor.ProcessorABC):
         bjet_disc  = selev.Jet.btagDeepB > 0.7264 # L=0.0494, M=0.2770, T=0.7264
         bjet_level = jet_level & bjet_disc
 
-        sel      = selev.Electron[el_level]
-        smu      = selev.Muon[mu_level]
         sjets    = selev.Jet[jet_level]
         sbjets   = selev.Jet[bjet_level]
         sfatjets = ak.pad_none(selev.FatJet[fatjet_level], 1)[:,0]
         sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
         subjet1  = ak.pad_none(sfatjets.subjets, 2)[:, 0]
         subjet2  = ak.pad_none(sfatjets.subjets, 2)[:, 1]
+       
         SV       = selev.SV
-        nsv1     = get_nsv(subjet1, SV)
-        nsv2     = get_nsv(subjet2, SV)
         nmusj1   = ak.num(subjet1.delta_r(smu) < 0.4)
         nmusj2   = ak.num(subjet2.delta_r(smu) < 0.4)
+        nsv1     = get_nsv(subjet1, SV)
+        nsv2     = get_nsv(subjet2, SV)
+        
+        #fatjet_mutag = (nmusj1 >= 1) & (nmusj2 >= 1)
+        #sfatjets = sfatjets[fatjet_mutag]
+        #sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
+        #subjet1  = subjet1[fatjet_mutag]
+        #subjet2  = subjet2[fatjet_mutag]
+        #print('nmusj1:', len(nmusj1))
+        #print('fatjet_mutag:', len(fatjet_mutag))
+        #nmusj1   = nmusj1[fatjet_mutag]
+        #nmusj2   = nmusj2[fatjet_mutag]
+        #nsv1     = nsv1[fatjet_mutag]
+        #nsv2     = nsv2[fatjet_mutag]
 
         # Flavor matching
         if not isRealData:
@@ -282,7 +286,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         output['njet'].fill(dataset=dataset,    njet=num(sjets))
         output['nbjet'].fill(dataset=dataset,   nbjet=num(sbjets))
-        output['nel'].fill(dataset=dataset,     nel=num(sel))
+        #output['nel'].fill(dataset=dataset,     nel=num(sel))
         output['nmu'].fill(dataset=dataset,     nmu=num(smu))
         output['nfatjet'].fill(dataset=dataset, flavor="inclusive", nfatjet=num(sfatjets))
         output['nmusj1'].fill(dataset=dataset,  flavor="inclusive", nmusj1=flatten(nmusj1))
