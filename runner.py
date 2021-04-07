@@ -167,7 +167,8 @@ if __name__ == '__main__':
 				save(output, filepath)
 				print(f"Saving output to {filepath}")
 				output_split.append(output)
-	elif args.executor == 'parsl/slurm':
+	#elif args.executor == 'parsl/slurm':
+	elif 'parsl' in args.executor:
 		import parsl
 		from parsl.providers import LocalProvider, CondorProvider, SlurmProvider
 		from parsl.channels import LocalChannel
@@ -176,47 +177,31 @@ if __name__ == '__main__':
 		from parsl.launchers import SrunLauncher, SingleNodeLauncher
 		from parsl.addresses import address_by_hostname
 
-		slurm_htex = Config(
-			executors=[
-				HighThroughputExecutor(
-					label="coffea_parsl_slurm",
-					address=address_by_hostname(),
-					prefetch_capacity=0,
-					provider=SlurmProvider(
-						channel=LocalChannel(script_dir='logs_parsl'),
-						#launcher=SrunLauncher(),
-						launcher=SingleNodeLauncher(),
-						max_blocks=(args.scaleout)+10,
-						init_blocks=args.scaleout,
-						partition='wn',
-						worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
-						walltime='00:1440:00'
-					),
-				)
-			],
-			retries=20,
-		)
-		dfk = parsl.load(slurm_htex)
+		if 'slurm' in args.executor:
+			slurm_htex = Config(
+				executors=[
+					HighThroughputExecutor(
+						label="coffea_parsl_slurm",
+						address=address_by_hostname(),
+						prefetch_capacity=0,
+						provider=SlurmProvider(
+							channel=LocalChannel(script_dir='logs_parsl'),
+							#launcher=SrunLauncher(),
+							launcher=SingleNodeLauncher(),
+							max_blocks=(args.scaleout)+10,
+							init_blocks=args.scaleout,
+							partition='wn',
+							worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
+							walltime='00:1440:00'
+						),
+					)
+				],
+				retries=20,
+			)
+			dfk = parsl.load(slurm_htex)
 
-		if not args.splitdataset:
-			output = processor.run_uproot_job(sample_dict,
-										treename='Events',
-										processor_instance=processor_instance,
-										executor=processor.parsl_executor,
-										executor_args={
-											'skipbadfiles':True,
-											'schema': processor.NanoAODSchema, 
-											'config': None,
-										},
-										chunksize=args.chunk, maxchunks=args.max
-										)
-		else:
-			hist_dir = hist_dir + args.output.split(".coffea")[0] + "/"
-			if not os.path.exists(hist_dir):
-				os.makedirs(hist_dir)
-			for dataset in sample_dict.keys():
-				print("Processing " + dataset)
-				output = processor.run_uproot_job({dataset : sample_dict[dataset]},
+			if not args.splitdataset:
+				output = processor.run_uproot_job(sample_dict,
 											treename='Events',
 											processor_instance=processor_instance,
 											executor=processor.parsl_executor,
@@ -227,10 +212,63 @@ if __name__ == '__main__':
 											},
 											chunksize=args.chunk, maxchunks=args.max
 											)
-				filepath = hist_dir + args.output.replace(".coffea", "_" + dataset + ".coffea")
-				save(output, filepath)
-				print(f"Saving output to {filepath}")
-				output_split.append(output)
+			else:
+				hist_dir = hist_dir + args.output.split(".coffea")[0] + "/"
+				if not os.path.exists(hist_dir):
+					os.makedirs(hist_dir)
+				for dataset in sample_dict.keys():
+					print("Processing " + dataset)
+					output = processor.run_uproot_job({dataset : sample_dict[dataset]},
+												treename='Events',
+												processor_instance=processor_instance,
+												executor=processor.parsl_executor,
+												executor_args={
+													'skipbadfiles':True,
+													'schema': processor.NanoAODSchema, 
+													'config': None,
+												},
+												chunksize=args.chunk, maxchunks=args.max
+												)
+					filepath = hist_dir + args.output.replace(".coffea", "_" + dataset + ".coffea")
+					save(output, filepath)
+					print(f"Saving output to {filepath}")
+					output_split.append(output)
+		elif 'condor' in args.executor:
+			slurm_htex = Config(
+				executors=[
+					HighThroughputExecutor(
+						label="coffea_parsl_slurm",
+						address=address_by_hostname(),
+						prefetch_capacity=0,
+						provider=CondorProvider(
+							channel=LocalChannel(script_dir='logs_parsl'),
+							launcher=SingleNodeLauncher(),
+							max_blocks=(args.scaleout)+10,
+							init_blocks=args.scaleout,
+							partition='wn',
+							worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
+							walltime='00:1440:00'
+						),
+					)
+				],
+				retries=20,
+			)
+			dfk = parsl.load(slurm_htex)
+
+			if not args.splitdataset:
+				output = processor.run_uproot_job(sample_dict,
+											treename='Events',
+											processor_instance=processor_instance,
+											executor=processor.parsl_executor,
+											executor_args={
+												'skipbadfiles':True,
+												'schema': processor.NanoAODSchema, 
+												'config': None,
+											},
+											chunksize=args.chunk, maxchunks=args.max
+											)
+			else:
+				raise NotImplementedError
 		
 	elif 'dask' in args.executor:
 		from dask_jobqueue import SLURMCluster, HTCondorCluster
