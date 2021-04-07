@@ -1,1 +1,5 @@
 cmd_parsl.slurm.*
+logs*
+plots/*
+runinfo/*
+histograms/*
