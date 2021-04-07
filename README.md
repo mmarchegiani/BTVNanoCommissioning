@@ -52,7 +52,7 @@ Run the example on a Slurm cluster:
 ```
 python runner.py --workflow fattag --executor parsl/slurm --samples datasets_local_fixed.json --output hists_fattag.coffea -s 10
 ```
-## Execution on Slurm provider with Parsl
+## Execution on Condor provider with Parsl
 Run the example on a Condor cluster:
 ```
 python runner.py --workflow fattag --executor parsl/condor --samples datasets_local_fixed.json --output hists_fattag.coffea -s 10
