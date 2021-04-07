@@ -9,12 +9,12 @@ lumi = {
 
 # Cross-sections in pb
 xsecs = {
-    "QCD_Pt-15to20_MuEnrichedPt5"    : 2799000.0,
-    "QCD_Pt-20to30_MuEnrichedPt5"    : 2526000.0,
-    "QCD_Pt-30to50_MuEnrichedPt5"    : 1362000.0,
-    "QCD_Pt-50to80_MuEnrichedPt5"    : 376600.0,
-    "QCD_Pt-80to120_MuEnrichedPt5"   : 88930.0,
-    "QCD_Pt-120to170_MuEnrichedPt5"  : 21230.0,
+    #"QCD_Pt-15to20_MuEnrichedPt5"    : 2799000.0,
+    #"QCD_Pt-20to30_MuEnrichedPt5"    : 2526000.0,
+    #"QCD_Pt-30to50_MuEnrichedPt5"    : 1362000.0,
+    #"QCD_Pt-50to80_MuEnrichedPt5"    : 376600.0,
+    #"QCD_Pt-80to120_MuEnrichedPt5"   : 88930.0,
+    #"QCD_Pt-120to170_MuEnrichedPt5"  : 21230.0,
     "QCD_Pt-170to300_MuEnrichedPt5"  : 7055.0,
     "QCD_Pt-300to470_MuEnrichedPt5"  : 619.3,    
     "QCD_Pt-470to600_MuEnrichedPt5"  : 59.24,
@@ -26,29 +26,36 @@ xsecs = {
     "GluGluHToCC_M-125_13TeV"  : 27.8,
 }
 
-def rescale(accumulator, xsecs, lumi, data="BTagMu"):
+def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
+#def rescale(accumulator, xsecs=xsecs, data="BTagMu"):
     """Scale by lumi"""
-    lumi = 1000*lumi    # Convert lumi to pb^-1
+    #lumi = 1000*lumi    # Convert lumi to pb^-1
     from coffea import hist
     scale = {}
-    norm = 1./ak.sum(accumulator['fatjet_pt'][data].values().values())
-    scaletodata = {dataset : norm for dataset in xsecs.keys()}
-    print("scaletodata:", scaletodata)
+    sumxsecs = ak.sum(xsecs.values())
+    #N_data = accumulator['nbtagmu_event_level'][data]
     print("Scaling:")
-    for dataset, dataset_sumw in collections.OrderedDict(sorted(accumulator['sumw'].items())).items():
-        #dataset_key = dataset.lstrip("/").split("/")[0]
-        dataset_key = dataset
-        if dataset_key in xsecs:
-            print(" ", dataset_key, "\t", xsecs[dataset_key], "pb")
-            scale[dataset] = lumi*xsecs[dataset_key]/dataset_sumw
+    #print("N_data =", N_data)
+    print("sumxsecs =", sumxsecs)
+    for dataset, N_mc in collections.OrderedDict(sorted(accumulator['sumw'].items())).items():
+        if dataset in xsecs:
+            print(" ", dataset, "\t", N_mc, "events\t", xsecs[dataset], "pb")
+            #scale[dataset] = (xsecs[dataset]/sumxsecs)*(N_data/N_mc)
+            scale[dataset] = (xsecs[dataset]*lumi)/N_mc
         else:
-            print(" ", "X ", dataset_key)
-            scale[dataset] = 0#lumi / dataset_sumw
-            scaletodata[dataset] = 0
+            print(" ", "X ", dataset)
+            scale[dataset] = 0#lumi / N_mc
+    print(scale)
 
+    datasets_mc = list(xsecs.keys())
     for h in accumulator.values():
         if isinstance(h, hist.Hist):
             h.scale(scale,       axis="dataset")
+            N_data = ak.sum(h[data].values().values())            
+            N_mc = ak.sum(h[datasets_mc].sum('dataset', 'flavor').values().values())
+            #scaletodata = dict(zip(scale.keys(), len(scale)*[1./N_data]))
+            scaletodata = dict(zip(scale.keys(), len(scale)*[N_data/N_mc]))
+            print(scaletodata)
             h.scale(scaletodata, axis="dataset")
     return accumulator
 

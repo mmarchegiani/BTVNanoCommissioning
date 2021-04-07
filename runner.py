@@ -11,6 +11,7 @@ from coffea import hist
 from coffea.nanoevents import NanoEventsFactory
 from coffea.util import load, save
 from coffea import processor
+from utils import rescale, lumi, xsecs
 
 def validate(file):
 	try:
@@ -34,6 +35,7 @@ if __name__ == '__main__':
 	parser.add_argument('-j', '--workers', type=int, default=12, help='Number of workers (cores/threads) to use for multi-worker executors (e.g. futures or condor) (default: %(default)s)')
 	parser.add_argument('-s', '--scaleout', type=int, default=6, help='Number of nodes to scale out to if using slurm/condor. Total number of concurrent threads is ``workers x scaleout`` (default: %(default)s)')
 	parser.add_argument('--voms', default=None, type=str, help='Path to voms proxy, accsessible to worker nodes. By default a copy will be made to $HOME.')
+	parser.add_argument('--splitdataset', action='store_true', help='Process each dataset separately.')
 
 	# Debugging
 	parser.add_argument('--validate', action='store_true', help='Do not process, just check all files are accessible')
@@ -72,6 +74,9 @@ if __name__ == '__main__':
 				if args.only in sample_dict[key]:
 					sample_dict = dict([(key, [args.only])]) 
 
+	hist_dir = os.getcwd() + "/histograms/"
+	if not os.path.exists(hist_dir):
+		os.makedirs(hist_dir)
 
 	# Scan if files can be opened
 	if args.validate:
@@ -125,28 +130,50 @@ if __name__ == '__main__':
 
 	#########
 	# Execute
+	output_split = []
 	if args.executor in ['futures', 'iterative']:
 		if args.executor == 'iterative':
 			_exec = processor.iterative_executor
 		else:
 			_exec = processor.futures_executor
-		output = processor.run_uproot_job(sample_dict,
-									treename='Events',
-									processor_instance=processor_instance,
-									executor=_exec,
-									executor_args={
-										'skipbadfiles':args.skipbadfiles,
-										'schema': processor.NanoAODSchema, 
-										'workers': args.workers},
-									chunksize=args.chunk, maxchunks=args.max
-									)
+		if not args.splitdataset:
+			output = processor.run_uproot_job(sample_dict,
+										treename='Events',
+										processor_instance=processor_instance,
+										executor=_exec,
+										executor_args={
+											'skipbadfiles':args.skipbadfiles,
+											'schema': processor.NanoAODSchema, 
+											'workers': args.workers},
+										chunksize=args.chunk, maxchunks=args.max
+										)
+		else:
+			hist_dir = hist_dir + args.output.split(".coffea")[0] + "/"
+			if not os.path.exists(hist_dir):
+				os.makedirs(hist_dir)
+			for dataset in sample_dict.keys():
+				print("Processing " + dataset)
+				output = processor.run_uproot_job({dataset : sample_dict[dataset]},
+											treename='Events',
+											processor_instance=processor_instance,
+											executor=_exec,
+											executor_args={
+												'skipbadfiles':args.skipbadfiles,
+												'schema': processor.NanoAODSchema, 
+												'workers': args.workers},
+											chunksize=args.chunk, maxchunks=args.max
+											)
+				filepath = hist_dir + args.output.replace(".coffea", "_" + dataset + ".coffea")
+				save(output, filepath)
+				print(f"Saving output to {filepath}")
+				output_split.append(output)
 	elif args.executor == 'parsl/slurm':
 		import parsl
 		from parsl.providers import LocalProvider, CondorProvider, SlurmProvider
 		from parsl.channels import LocalChannel
 		from parsl.config import Config
 		from parsl.executors import HighThroughputExecutor
-		from parsl.launchers import SrunLauncher
+		from parsl.launchers import SrunLauncher, SingleNodeLauncher
 		from parsl.addresses import address_by_hostname
 
 		slurm_htex = Config(
@@ -157,12 +184,13 @@ if __name__ == '__main__':
 					prefetch_capacity=0,
 					provider=SlurmProvider(
 						channel=LocalChannel(script_dir='logs_parsl'),
-						launcher=SrunLauncher(),
+						#launcher=SrunLauncher(),
+						launcher=SingleNodeLauncher(),
 						max_blocks=(args.scaleout)+10,
-						init_blocks=args.scaleout, 
+						init_blocks=args.scaleout,
 						partition='wn',
-						worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD", 
-						walltime='00:120:00'
+						worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
+						walltime='00:1440:00'
 					),
 				)
 			],
@@ -170,17 +198,39 @@ if __name__ == '__main__':
 		)
 		dfk = parsl.load(slurm_htex)
 
-		output = processor.run_uproot_job(sample_dict,
-									treename='Events',
-									processor_instance=processor_instance,
-									executor=processor.parsl_executor,
-									executor_args={
-										'skipbadfiles':True,
-										'schema': processor.NanoAODSchema, 
-										'config': None,
-									},
-									chunksize=args.chunk, maxchunks=args.max
-									)
+		if not args.splitdataset:
+			output = processor.run_uproot_job(sample_dict,
+										treename='Events',
+										processor_instance=processor_instance,
+										executor=processor.parsl_executor,
+										executor_args={
+											'skipbadfiles':True,
+											'schema': processor.NanoAODSchema, 
+											'config': None,
+										},
+										chunksize=args.chunk, maxchunks=args.max
+										)
+		else:
+			hist_dir = hist_dir + args.output.split(".coffea")[0] + "/"
+			if not os.path.exists(hist_dir):
+				os.makedirs(hist_dir)
+			for dataset in sample_dict.keys():
+				print("Processing " + dataset)
+				output = processor.run_uproot_job({dataset : sample_dict[dataset]},
+											treename='Events',
+											processor_instance=processor_instance,
+											executor=processor.parsl_executor,
+											executor_args={
+												'skipbadfiles':True,
+												'schema': processor.NanoAODSchema, 
+												'config': None,
+											},
+											chunksize=args.chunk, maxchunks=args.max
+											)
+				filepath = hist_dir + args.output.replace(".coffea", "_" + dataset + ".coffea")
+				save(output, filepath)
+				print(f"Saving output to {filepath}")
+				output_split.append(output)
 		
 	elif 'dask' in args.executor:
 		from dask_jobqueue import SLURMCluster, HTCondorCluster
@@ -220,7 +270,22 @@ if __name__ == '__main__':
 										chunksize=args.chunk, maxchunks=args.max
 							)
 
-	save(output, "histograms/" + args.output)
-  
-	print(output)
-	print(f"Saving output to histograms/{args.output}")
+	if not args.splitdataset:
+		output = rescale(output, xsecs, lumi[args.year])
+		save(output, hist_dir + args.output)
+		print(output)
+		print(f"Saving output to {hist_dir + args.output}")
+	else:
+		accumulator = output_split[0]
+		histograms = output_split[0].keys()
+		for histname in histograms:
+			for output in output_split:
+				accumulator[histname].add(output[histname])
+
+		if not os.path.exists(hist_dir):
+			os.makedirs(hist_dir)
+		accumulator = rescale(accumulator, xsecs, lumi[args.year])
+		save(accumulator, hist_dir + args.output)
+		print(accumulator)
+		print(f"Saving output to {hist_dir + args.output}")
+
