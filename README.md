@@ -45,7 +45,7 @@ python runner.py --workflow fattag --executor futures --samples datasets_local_f
 ```
 An alternative method is implemented, submitting dedicated jobs for each dataset, with the option `--splitdataset`:
 ```
-python runner.py --workflow fattag --executor futures --samples datasets_local_fixed.json --output hists_fattag.coffea -s 10 --workers 16
+python runner.py --workflow fattag --executor futures --samples datasets_local_fixed.json --output hists_fattag.coffea --workers 16
 ```
 ## Execution on Slurm provider with Parsl
 Run the example on a Slurm cluster:
