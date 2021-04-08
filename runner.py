@@ -31,7 +31,7 @@ if __name__ == '__main__':
 	parser.add_argument('--year', type=int, choices=['2016', '2017', '2018'], default='2017', help='Year of data/MC samples')
 
 	# Scale out
-	parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
+	parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/condor', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
 	parser.add_argument('-j', '--workers', type=int, default=12, help='Number of workers (cores/threads) to use for multi-worker executors (e.g. futures or condor) (default: %(default)s)')
 	parser.add_argument('-s', '--scaleout', type=int, default=6, help='Number of nodes to scale out to if using slurm/condor. Total number of concurrent threads is ``workers x scaleout`` (default: %(default)s)')
 	parser.add_argument('--voms', default=None, type=str, help='Path to voms proxy, accsessible to worker nodes. By default a copy will be made to $HOME.')
@@ -245,7 +245,7 @@ if __name__ == '__main__':
 							launcher=SingleNodeLauncher(),
 							max_blocks=(args.scaleout)+10,
 							init_blocks=args.scaleout,
-							partition='wn',
+							#partition='wn',
 							worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
 							walltime='00:1440:00'
 						),
