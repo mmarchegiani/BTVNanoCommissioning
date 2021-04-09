@@ -128,6 +128,21 @@ if __name__ == '__main__':
 			'ulimit -u 32768',
 		]
 
+		wrk_init = [
+			f'export X509_USER_PROXY={_x509_path}',
+			f'export X509_CERT_DIR={os.environ["X509_CERT_DIR"]}',
+			'source /etc/profile.d/conda.sh',
+			'export PATH=$CONDA_PREFIX/bin:$PATH',
+			'conda activate btv',
+			'cd /afs/cern.ch/work/m/mmarcheg/BTVNanoCommissioning/',
+		]
+
+		condor_cfg = '''
+		getenv      =  True
+		+JobFlavour =  "nextweek"
+		'''
+		#process_worker_pool = os.environ['CONDA_PREFIX'] + "/bin/process_worker_pool.py"
+
 	#########
 	# Execute
 	output_split = []
@@ -234,26 +249,31 @@ if __name__ == '__main__':
 					print(f"Saving output to {filepath}")
 					output_split.append(output)
 		elif 'condor' in args.executor:
-			slurm_htex = Config(
+			#xfer_files = [process_worker_pool, _x509_path]
+			#print(xfer_files)
+
+			condor_htex = Config(
 				executors=[
 					HighThroughputExecutor(
 						label="coffea_parsl_slurm",
-						address=address_by_hostname(),
+						#address=address_by_hostname(),
+						worker_ports=(8786,8785),
 						prefetch_capacity=0,
 						provider=CondorProvider(
 							channel=LocalChannel(script_dir='logs_parsl'),
 							launcher=SingleNodeLauncher(),
 							max_blocks=(args.scaleout)+10,
 							init_blocks=args.scaleout,
-							#partition='wn',
-							worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
-							walltime='00:1440:00'
+							worker_init="\n".join(wrk_init),
+							#transfer_input_files=xfer_files,
+							scheduler_options=condor_cfg,
+							walltime='00:30:00'
 						),
 					)
 				],
-				retries=20,
+				#retries=20,
 			)
-			dfk = parsl.load(slurm_htex)
+			dfk = parsl.load(condor_htex)
 
 			if not args.splitdataset:
 				output = processor.run_uproot_job(sample_dict,
