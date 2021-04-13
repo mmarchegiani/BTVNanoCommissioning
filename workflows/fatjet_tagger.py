@@ -1,7 +1,7 @@
 import coffea
 from coffea import hist, processor
 import numpy as np
-import awkward1 as ak
+import awkward as ak
 from utils import rescale, get_nsv, lumi, xsecs
 
 
@@ -59,7 +59,7 @@ class NanoProcessor(processor.ProcessorABC):
         #        'jet_phi' : hist.Hist("Events", dataset_axis, jet_phi_axis),
         #        'jet_mass': hist.Hist("Events", dataset_axis, jet_mass_axis),
         #    }
-        
+
         _hist_fatjet_dict = {
                 'fatjet_tau1'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_tau1_axis),
                 'fatjet_tau2'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_tau2_axis),
@@ -120,7 +120,7 @@ class NanoProcessor(processor.ProcessorABC):
 
     def process(self, events):
         output = self.accumulator.identity()
-        
+
         dataset = events.metadata['dataset']
 
         isRealData = 'genWeight' not in events.fields
@@ -151,7 +151,7 @@ class NanoProcessor(processor.ProcessorABC):
         ## Muon cuts
         # muon twiki: https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonIdRun2
         #events.Muon = events.Muon[(events.Muon.pt > 30) & (abs(events.Muon.eta < 2.4))] # & (events.Muon.tightId > .5)
-        events.Muon = events.Muon[(events.Muon.pt > 5) & (abs(events.Muon.eta < 2.4)) & (events.Muon.tightId != 1) & (events.Muon.pfRelIso04_all > 0.15)] 
+        events.Muon = events.Muon[(events.Muon.pt > 5) & (abs(events.Muon.eta < 2.4)) & (events.Muon.tightId != 1) & (events.Muon.pfRelIso04_all > 0.15)]
         events.Muon = ak.pad_none(events.Muon, 2, axis=1)
         #req_muons =(ak.count(events.Muon.pt, axis=1) >= 2)
 
@@ -174,7 +174,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         #req_opposite_charge = events.Electron[:, 0].charge * events.Muon[:, 0].charge == -1
 
-        event_level = req_trig & req_fatjets & req_subjets #& req_muons 
+        event_level = req_trig & req_fatjets & req_subjets #& req_muons
 
         # Selected
         selev = events[event_level]
@@ -309,7 +309,7 @@ class NanoProcessor(processor.ProcessorABC):
                 else:
                     for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb'], [_l, _c, _b, _cc, _bb]):
                         sfatjets_flavor = sfatjets[mask]
-                        sweight_fatjets_flavor = ak.flatten(sweight_fatjets[mask], axis=None)                        
+                        sweight_fatjets_flavor = ak.flatten(sweight_fatjets[mask], axis=None)
                         fields = {k: ak.flatten(sfatjets_flavor[k], axis=None) for k in h.fields if k in dir(sfatjets_flavor)}
                         for varname, values in zip(['nsv1', 'nsv2', 'nmusj1', 'nmusj2'], [nsv1, nsv2, nmusj1, nmusj2]):
                             if varname in histname:

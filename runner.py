@@ -6,12 +6,25 @@ import time
 
 import numpy as np
 
-import uproot4 as uproot
+import uproot as uproot
 from coffea import hist
 from coffea.nanoevents import NanoEventsFactory
 from coffea.util import load, save
 from coffea import processor
 from utils import rescale, lumi, xsecs
+
+
+wrk_init = '''
+export X509_USER_PROXY=/afs/cern.ch/user/a/algomez/x509up_u15148
+source /afs/cern.ch/work/a/algomez/miniconda3/etc/profile.d/conda.sh
+export PATH=/afs/cern.ch/work/a/algomez/miniconda3/bin:$PATH
+source activate btv
+cd /afs/cern.ch/work/a/algomez/DoubleXTagger/BTVNanoCommissioning/
+'''
+condor_cfg = '''
+getenv      =  True
++JobFlavour =  "nextweek"
+'''
 
 def validate(file):
 	try:
@@ -19,7 +32,7 @@ def validate(file):
 		return fin['Events'].num_entries
 	except:
 		print("Corrupted file: {}".format(file))
-		return 
+		return
 
 
 if __name__ == '__main__':
@@ -53,7 +66,7 @@ if __name__ == '__main__':
 	# load dataset
 	with open(args.samplejson) as f:
 		sample_dict = json.load(f)
-	
+
 	for key in sample_dict.keys():
 		sample_dict[key] = sample_dict[key][:args.limit]
 
@@ -72,7 +85,7 @@ if __name__ == '__main__':
 		else:  # is file
 			for key in sample_dict.keys():
 				if args.only in sample_dict[key]:
-					sample_dict = dict([(key, [args.only])]) 
+					sample_dict = dict([(key, [args.only])])
 
 	hist_dir = os.getcwd() + "/histograms/"
 	if not os.path.exists(hist_dir):
@@ -95,13 +108,13 @@ if __name__ == '__main__':
 			print(f"  {fi}")
 		end = time.time()
 		print("TIME:", time.strftime("%H:%M:%S", time.gmtime(end-start)))
-		if input("Remove bad files? (y/n)") == "y": 
+		if input("Remove bad files? (y/n)") == "y":
 			print("Removing:")
 			for fi in all_invalid:
-				print(f"Removing: {fi}")            
+				print(f"Removing: {fi}")
 				os.system(f'rm {fi}')
 		sys.exit(0)
-	
+
 	# load workflow
 	if args.workflow == "ttcom":
 		from workflows.ttbar_validation import NanoProcessor
@@ -143,7 +156,7 @@ if __name__ == '__main__':
 										executor=_exec,
 										executor_args={
 											'skipbadfiles':args.skipbadfiles,
-											'schema': processor.NanoAODSchema, 
+											'schema': processor.NanoAODSchema,
 											'workers': args.workers},
 										chunksize=args.chunk, maxchunks=args.max
 										)
@@ -159,7 +172,7 @@ if __name__ == '__main__':
 											executor=_exec,
 											executor_args={
 												'skipbadfiles':args.skipbadfiles,
-												'schema': processor.NanoAODSchema, 
+												'schema': processor.NanoAODSchema,
 												'workers': args.workers},
 											chunksize=args.chunk, maxchunks=args.max
 											)
@@ -207,7 +220,7 @@ if __name__ == '__main__':
 											executor=processor.parsl_executor,
 											executor_args={
 												'skipbadfiles':True,
-												'schema': processor.NanoAODSchema, 
+												'schema': processor.NanoAODSchema,
 												'config': None,
 											},
 											chunksize=args.chunk, maxchunks=args.max
@@ -224,7 +237,7 @@ if __name__ == '__main__':
 												executor=processor.parsl_executor,
 												executor_args={
 													'skipbadfiles':True,
-													'schema': processor.NanoAODSchema, 
+													'schema': processor.NanoAODSchema,
 													'config': None,
 												},
 												chunksize=args.chunk, maxchunks=args.max
@@ -238,7 +251,8 @@ if __name__ == '__main__':
 				executors=[
 					HighThroughputExecutor(
 						label="coffea_parsl_slurm",
-						address=address_by_hostname(),
+						#address=address_by_hostname(),
+                                                worker_ports=(8786,8785),
 						prefetch_capacity=0,
 						provider=CondorProvider(
 							channel=LocalChannel(script_dir='logs_parsl'),
@@ -246,8 +260,9 @@ if __name__ == '__main__':
 							max_blocks=(args.scaleout)+10,
 							init_blocks=args.scaleout,
 							#partition='wn',
-							worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
-							walltime='00:1440:00'
+							worker_init= wrk_init, #"\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
+                                                        scheduler_options=condor_cfg,
+							#walltime='00:1440:00'
 						),
 					)
 				],
@@ -262,14 +277,14 @@ if __name__ == '__main__':
 											executor=processor.parsl_executor,
 											executor_args={
 												'skipbadfiles':True,
-												'schema': processor.NanoAODSchema, 
+												'schema': processor.NanoAODSchema,
 												'config': None,
 											},
 											chunksize=args.chunk, maxchunks=args.max
 											)
 			else:
 				raise NotImplementedError
-		
+
 	elif 'dask' in args.executor:
 		from dask_jobqueue import SLURMCluster, HTCondorCluster
 		from distributed import Client
@@ -287,9 +302,9 @@ if __name__ == '__main__':
 			)
 		elif 'condor' in args.executor:
 			cluster = HTCondorCluster(
-				 cores=args.workers, 
-				 memory='2GB', 
-				 disk='2GB', 
+				 cores=args.workers,
+				 memory='2GB',
+				 disk='2GB',
 				 env_extra=env_extra,
 			)
 		cluster.scale(jobs=args.scaleout)
@@ -303,7 +318,7 @@ if __name__ == '__main__':
 										executor_args={
 											'client': client,
 											'skipbadfiles':args.skipbadfiles,
-											'schema': processor.NanoAODSchema, 
+											'schema': processor.NanoAODSchema,
 										},
 										chunksize=args.chunk, maxchunks=args.max
 							)

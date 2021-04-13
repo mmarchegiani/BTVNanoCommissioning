@@ -1,5 +1,5 @@
 import collections
-import awkward1 as ak
+import awkward as ak
 
 lumi = {
     2016 : 35.5,
@@ -16,7 +16,7 @@ xsecs = {
     #"QCD_Pt-80to120_MuEnrichedPt5"   : 88930.0,
     #"QCD_Pt-120to170_MuEnrichedPt5"  : 21230.0,
     "QCD_Pt-170to300_MuEnrichedPt5"  : 7055.0,
-    "QCD_Pt-300to470_MuEnrichedPt5"  : 619.3,    
+    "QCD_Pt-300to470_MuEnrichedPt5"  : 619.3,
     "QCD_Pt-470to600_MuEnrichedPt5"  : 59.24,
     "QCD_Pt-600to800_MuEnrichedPt5"  : 18.21,
     "QCD_Pt-800to1000_MuEnrichedPt5" : 3.275,
@@ -51,7 +51,7 @@ def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
     for h in accumulator.values():
         if isinstance(h, hist.Hist):
             h.scale(scale,       axis="dataset")
-            N_data = ak.sum(h[data].values().values())            
+            N_data = ak.sum(h[data].values().values())
             N_mc = ak.sum(h[datasets_mc].sum('dataset', 'flavor').values().values())
             #scaletodata = dict(zip(scale.keys(), len(scale)*[1./N_data]))
             scaletodata = dict(zip(scale.keys(), len(scale)*[N_data/N_mc]))
@@ -60,10 +60,10 @@ def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
     return accumulator
 
 def get_nsv(sj, sv, R=0.4):
-    
+
     sv_dr = sj.delta_r(sv)
     nsv = ak.count(sv_dr[sv_dr < R], axis=1)
-    
+
     return nsv
 
 """
@@ -71,9 +71,9 @@ def xSecReader(fname):
    # Probably unsafe
     with open(fname) as file:
         lines = file.readlines()
-    lines = [l.strip("\n") for l in lines if not l.startswith("#")]    
+    lines = [l.strip("\n") for l in lines if not l.startswith("#")]
     lines = [l.split("#")[0] for l in lines if len(l) > 5]
-    
+
     _dict = {}
     for line in lines:
         key = line.split()[0]
@@ -93,7 +93,7 @@ xsecs = {
     "/QCD_Pt-80to120_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM"   : 88930.0,
     "/QCD_Pt-120to170_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM"  : 21230.0,
     "/QCD_Pt-170to300_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM"  : 7055.0,
-    "/QCD_Pt-300to470_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM"  : 619.3,    
+    "/QCD_Pt-300to470_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM"  : 619.3,
     "/QCD_Pt-470to600_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM"  : 59.24,
     "/QCD_Pt-600to800_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM"  : 18.21,
     "/QCD_Pt-800to1000_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v1/MINIAODSIM" : 3.275,
