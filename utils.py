@@ -1,5 +1,7 @@
 import collections
-import awkward1 as ak
+import numpy as np
+#import awkward1 as ak
+import awkward as ak
 
 lumi = {
     2016 : 35.5,
@@ -26,6 +28,20 @@ xsecs = {
     "GluGluHToCC_M-125_13TeV"  : 27.8,
 }
 
+histogram_settings = {
+    'variables' : {
+        'fatjet_pt'    : {'binning' : {'n_or_arr' : 125, 'lo' : 0,      'hi' : 1000},  'xlim' : {'xmin' : 0, 'xmax' : 1000}},
+        'fatjet_eta'   : {'binning' : {'n_or_arr' : 30,  'lo' : -3,     'hi' : 3},     'xlim' : {'xmin' : -3, 'xmax' : 3}},
+        'fatjet_phi'   : {'binning' : {'n_or_arr' : 30,  'lo' : -np.pi, 'hi' : np.pi}, 'xlim' : {'xmin' : -np.pi, 'xmax' : np.pi}},
+        #'fatjet_phi'   : {'binning' : {'n_or_arr' : 30,  'lo' : -3,     'hi' : 3},     'xlim' : {'xmin' : -3, 'xmax' : 3}},
+        'fatjet_mass'  : {'binning' : {'n_or_arr' : 150, 'lo' : 0,      'hi' : 300},   'xlim' : {'xmin' : 0, 'xmax' : 300}},
+        'nsv1'         : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'nsv2'         : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'nmusj1'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'nmusj2'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+    }
+}
+
 def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
 #def rescale(accumulator, xsecs=xsecs, data="BTagMu"):
     """Scale by lumi"""
@@ -34,9 +50,7 @@ def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
     scale = {}
     sumxsecs = ak.sum(xsecs.values())
     #N_data = accumulator['nbtagmu_event_level'][data]
-    print("Scaling:")
     #print("N_data =", N_data)
-    print("sumxsecs =", sumxsecs)
     for dataset, N_mc in collections.OrderedDict(sorted(accumulator['sumw'].items())).items():
         if dataset in xsecs:
             print(" ", dataset, "\t", N_mc, "events\t", xsecs[dataset], "pb")
@@ -47,7 +61,7 @@ def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
             scale[dataset] = 0#lumi / N_mc
     print(scale)
 
-    datasets_mc = list(xsecs.keys())
+    datasets_mc = [item for item in list(xsecs.keys()) if not 'GluGlu' in item]
     for h in accumulator.values():
         if isinstance(h, hist.Hist):
             h.scale(scale,       axis="dataset")
@@ -55,7 +69,6 @@ def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
             N_mc = ak.sum(h[datasets_mc].sum('dataset', 'flavor').values().values())
             #scaletodata = dict(zip(scale.keys(), len(scale)*[1./N_data]))
             scaletodata = dict(zip(scale.keys(), len(scale)*[N_data/N_mc]))
-            print(scaletodata)
             h.scale(scaletodata, axis="dataset")
     return accumulator
 
