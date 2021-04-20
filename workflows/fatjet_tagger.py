@@ -1,7 +1,8 @@
 import coffea
 from coffea import hist, processor
 import numpy as np
-import awkward1 as ak
+#import awkward1 as ak
+import awkward as ak
 from utils import rescale, get_nsv, lumi, xsecs
 
 
@@ -38,7 +39,7 @@ class NanoProcessor(processor.ProcessorABC):
         fatjet_n2b1_axis  = hist.Bin("n2b1", r"lead. FatJet $N_{2}^{(\beta=1)}$", 50, 0, 0.5)
         fatjet_pt_axis    = hist.Bin("pt",   r"lead. FatJet $p_{T}$ [GeV]", 250, 0, 1000)
         fatjet_eta_axis   = hist.Bin("eta",  r"lead. FatJet $\eta$", 60, -3, 3)
-        fatjet_phi_axis   = hist.Bin("phi",  r"lead. FatJet $\phi$", 60, -3, 3)
+        fatjet_phi_axis   = hist.Bin("phi",  r"lead. FatJet $\phi$", 60, -np.pi, np.pi)
         fatjet_mass_axis  = hist.Bin("mass", r"lead. FatJet $m_{SD}$ [GeV]", 300, 0, 300)
         #lfjpt_axis     = hist.Bin("lfjpt", r"Leading fatjet $p_{T}$ [GeV]", 250, 0, 1000)
 
@@ -70,6 +71,9 @@ class NanoProcessor(processor.ProcessorABC):
                 'fatjet_phi' : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_phi_axis),
                 'fatjet_mass': hist.Hist("Events", dataset_axis, flavor_axis, fatjet_mass_axis),
             }
+
+        for (i, disc) in enumerate(disc_list_fj):
+            _hist_fatjet_dict['fatjet_' + disc] = hist.Hist("Events", dataset_axis, flavor_axis, btag_axes_fj[i])
 
         # Define 2D histograms
         _hist2d_dict = {}
@@ -139,6 +143,7 @@ class NanoProcessor(processor.ProcessorABC):
         ]
 
         trig_arrs = [events.HLT[_trig.strip("HLT_")] for _trig in triggers]
+        #req_trig = np.ones(len(events), dtype='bool')
         req_trig = np.zeros(len(events), dtype='bool')
         for t in trig_arrs:
             req_trig = req_trig | t
@@ -175,6 +180,7 @@ class NanoProcessor(processor.ProcessorABC):
         #req_opposite_charge = events.Electron[:, 0].charge * events.Muon[:, 0].charge == -1
 
         event_level = req_trig & req_fatjets & req_subjets #& req_muons 
+        #event_level = req_trig & req_fatjets 
 
         # Selected
         selev = events[event_level]
@@ -210,6 +216,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         #fatjet_level = fatjet_pt & fatjet_mass & fatjet_tau21
         fatjet_level = fatjet_pt & fatjet_mass & fatjet_subjets
+        #fatjet_level = ak.ones_like(fatjet_pt)
 
         # b-tag twiki : https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation102X
         bjet_disc  = selev.Jet.btagDeepB > 0.7264 # L=0.0494, M=0.2770, T=0.7264
@@ -220,7 +227,7 @@ class NanoProcessor(processor.ProcessorABC):
         sjets    = selev.Jet[jet_level]
         sbjets   = selev.Jet[bjet_level]
         sfatjets = ak.pad_none(selev.FatJet[fatjet_level], 1)[:,0]
-        #sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
+        sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
         subjet1  = ak.pad_none(sfatjets.subjets, 2)[:, 0]
         subjet2  = ak.pad_none(sfatjets.subjets, 2)[:, 1]
         SV       = selev.SV
@@ -230,6 +237,10 @@ class NanoProcessor(processor.ProcessorABC):
         nmusj2   = ak.num(subjet2.delta_r(smu) < 0.4)
 
         fatjet_mutag = (nmusj1 >= 1) & (nmusj2 >= 1)
+        #fatjet_tau21 = sfatjets.tau21 < 0.75
+        #fatjet_nsv1 = nsv1 > 0
+        #fatjet_nsv12 = (nsv1 > 0) & (nsv2 > 0)
+        #fatjet_mutag = fatjet_mutag & fatjet_nsv12
         sfatjets = sfatjets[fatjet_mutag]
         sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
         subjet1  = subjet1[fatjet_mutag]
@@ -244,9 +255,8 @@ class NanoProcessor(processor.ProcessorABC):
         sweight_jets = None
         sweight_fatjets = None
         if not isRealData:
-            #temp, sweight_jets    = ak.broadcast_arrays(sjets['pt'],    sweight[ak.any(jet_level, axis=1)])
-            sweight_fatjets = sweight[ak.any(fatjet_level, axis=1) & fatjet_mutag]
-            #sweight_jets = ak.flatten(sweight_jets, axis=None)
+            #sweight_fatjets = sweight[ak.any(fatjet_level, axis=1) & fatjet_mutag]
+            sweight_fatjets = sweight[ak.any(fatjet_level, axis=1)]
             sweight_fatjets = ak.flatten(sweight_fatjets, axis=None)
 
         # Flavor matching
@@ -285,7 +295,7 @@ class NanoProcessor(processor.ProcessorABC):
             #        h.fill(dataset=dataset, **fields, weight=sweight_jets)
             if ((histname in self.fatjet_hists) | ('hist2d_fatjet' in histname)):
                 fields = {k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k in dir(sfatjets)}
-                fields.update({k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
+                #fields.update({k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
                 #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=sweight_fatjets)
                 if isRealData:
                     h.fill(dataset=dataset, flavor="Data", **fields)
@@ -295,7 +305,7 @@ class NanoProcessor(processor.ProcessorABC):
                         sfatjets_flavor = sfatjets[mask]
                         sweight_fatjets_flavor = ak.flatten(sweight_fatjets[mask], axis=None)
                         fields = {k: ak.flatten(sfatjets_flavor[k], axis=None) for k in h.fields if k in dir(sfatjets_flavor)}
-                        fields.update({k: ak.flatten(sfatjets_flavor[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
+                        #fields.update({k: ak.flatten(sfatjets_flavor[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
                         h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
 
             elif (((histname in self.event_hists) | ('hist2d_nsv' in histname) | ('hist2d_nmusj' in histname)) & (not histname in ['njet', 'nbjet', 'nel', 'nmu', 'nfatjet'])):
@@ -315,7 +325,6 @@ class NanoProcessor(processor.ProcessorABC):
                             if varname in histname:
                                 fields.update({varname: ak.flatten(values[mask], axis=None)})
                         h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
-
             else: continue
 
         def flatten(ar): # flatten awkward into a 1d array to hist
@@ -329,10 +338,10 @@ class NanoProcessor(processor.ProcessorABC):
         #output['nel'].fill(dataset=dataset,     nel=ak.num(sel))
         #output['nmu'].fill(dataset=dataset,     nmu=ak.num(smu))
         output['nfatjet'].fill(dataset=dataset, flavor="inclusive", nfatjet=num(sfatjets))
-        output['nmusj1'].fill(dataset=dataset,  flavor="inclusive", nmusj1=flatten(nmusj1))
-        output['nmusj2'].fill(dataset=dataset,  flavor="inclusive", nmusj2=flatten(nmusj2))
-        output['nsv1'].fill(dataset=dataset,    flavor="inclusive", nsv1=ak.fill_none(nsv1, -1))
-        output['nsv2'].fill(dataset=dataset,    flavor="inclusive", nsv2=ak.fill_none(nsv2, -1))
+        #output['nmusj1'].fill(dataset=dataset,  flavor="inclusive", nmusj1=flatten(nmusj1))
+        #output['nmusj2'].fill(dataset=dataset,  flavor="inclusive", nmusj2=flatten(nmusj2))
+        #output['nsv1'].fill(dataset=dataset,    flavor="inclusive", nsv1=ak.fill_none(nsv1, -1))
+        #output['nsv2'].fill(dataset=dataset,    flavor="inclusive", nsv2=ak.fill_none(nsv2, -1))
 
         return output
 
