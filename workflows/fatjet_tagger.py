@@ -1,13 +1,20 @@
 import coffea
 from coffea import hist, processor
+import os
 import numpy as np
 import awkward as ak
+import tarfile
+import tempfile
+import uproot
 from utils import rescale, get_nsv, lumi, xsecs
 
 
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
-    def __init__(self):
+    def __init__(self, year='2017'):
+
+        self.year = year
+        self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'
         # Define axes
         # Should read axes from NanoAOD config
         dataset_axis = hist.Cat("dataset", "Primary dataset")
@@ -109,9 +116,25 @@ class NanoProcessor(processor.ProcessorABC):
         self.fatjet_hists = list(_hist_fatjet_dict.keys())
         self.event_hists = list(_hist_event_dict.keys())
 
+        ############
+        # Applying JECs
+        #self.jecFile = os.getcwd()+'/data/JEC/Fall17_17Nov2017_V32_MC.tar.gz'
+        #self.jesArchive = tarfile.open( self.jecFile, "r:gz")
+        #self.jesInputFilePath = tempfile.mkdtemp()
+        #self.jesArchive.extractall(self.jesInputFilePath)
+
         #_hist_dict = {**_hist_jet_dict, **_hist_fatjet_dict, **_hist2d_dict, **_hist_event_dict, **_sumw_dict}
         _hist_dict = {**_hist_fatjet_dict, **_hist2d_dict, **_hist_event_dict, **_sumw_dict}
         self._accumulator = processor.dict_accumulator(_hist_dict)
+
+    def puReweight(self, puFile, mcNtrueInt ):
+
+        with uproot.open(puFile) as file_pu:
+            norm = lambda x: x / x.sum()
+            data = norm(file_pu['pileup'].values)
+            #data = norm(file_pu['Pileup_nTrueInt'].values)
+            print(data)
+        return True
 
 
     @property
@@ -129,6 +152,7 @@ class NanoProcessor(processor.ProcessorABC):
         else:
             output['nbtagmu'][dataset] += ak.count(events.event)
 
+        self.puReweight( self.puFile, events.nTrueInt )
         ##############
         # Trigger level
         triggers = [

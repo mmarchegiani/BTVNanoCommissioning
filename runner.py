@@ -121,7 +121,7 @@ if __name__ == '__main__':
 		processor_instance = NanoProcessor()
 	elif args.workflow == "fattag":
 		from workflows.fatjet_tagger import NanoProcessor
-		processor_instance = NanoProcessor()
+		processor_instance = NanoProcessor(year='2017')
 	else:
 		raise NotImplemented
 
