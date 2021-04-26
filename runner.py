@@ -30,7 +30,7 @@ if __name__ == '__main__':
 	parser.add_argument( '--wf', '--workflow', dest='workflow', choices=['ttcom', 'fattag'], help='Which processor to run', required=True)
 	parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
 	parser.add_argument('--samples', '--json', dest='samplejson', default='dummy_samples.json', help='JSON file containing dataset and file locations (default: %(default)s)')
-	parser.add_argument('--year', type=int, choices=['2016', '2017', '2018'], default='2017', help='Year of data/MC samples')
+	parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
 
 	# Scale out
 	parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/condor', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 		processor_instance = NanoProcessor()
 	elif args.workflow == "fattag":
 		from workflows.fatjet_tagger import NanoProcessor
-		processor_instance = NanoProcessor()
+		processor_instance = NanoProcessor(year=args.year)
 	else:
 		raise NotImplemented
 
@@ -343,6 +343,7 @@ if __name__ == '__main__':
 		if args.offset == parser.get_default("offset"):
 			if len(sample_dict.keys()) > 1:
 				output = rescale(output, xsecs, lumi[args.year])
+				#output = rescale(output, xsecs, lumi[args.year], "JetHT")
 			save(output, hist_dir + args.output)
 			print(output)
 			print(f"Saving output to {hist_dir + args.output}")
