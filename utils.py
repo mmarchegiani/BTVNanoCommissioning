@@ -16,7 +16,7 @@ xsecs = {
     #"QCD_Pt-30to50_MuEnrichedPt5"    : 1362000.0,
     #"QCD_Pt-50to80_MuEnrichedPt5"    : 376600.0,
     #"QCD_Pt-80to120_MuEnrichedPt5"   : 88930.0,
-    #"QCD_Pt-120to170_MuEnrichedPt5"  : 21230.0,
+    "QCD_Pt-120to170_MuEnrichedPt5"  : 21230.0,
     "QCD_Pt-170to300_MuEnrichedPt5"  : 7055.0,
     "QCD_Pt-300to470_MuEnrichedPt5"  : 619.3,    
     "QCD_Pt-470to600_MuEnrichedPt5"  : 59.24,
