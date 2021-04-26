@@ -8,7 +8,13 @@ from utils import rescale, get_nsv, lumi, xsecs
 
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
-    def __init__(self):
+    def __init__(self, year=2017):
+        self.year = year
+        self._mask_fatjets = {
+          #'basic'       : None,
+          'msd50'       : None,
+          #'msd100tau06' : None,
+        }
         # Define axes
         # Should read axes from NanoAOD config
         dataset_axis = hist.Cat("dataset", "Primary dataset")
@@ -33,8 +39,8 @@ class NanoProcessor(processor.ProcessorABC):
         #ljpt_axis     = hist.Bin("ljpt", r"Leading jet $p_{T}$ [GeV]", 100, 20, 400)
 
         # FatJet
-        fatjet_tau1_axis  = hist.Bin("tau1",  r"lead. FatJet $\tau_{1}$", 50, 0, 1)
-        fatjet_tau2_axis  = hist.Bin("tau2",  r"lead. FatJet $\tau_{2}$", 50, 0, 1)
+        #fatjet_tau1_axis  = hist.Bin("tau1",  r"lead. FatJet $\tau_{1}$", 50, 0, 1)
+        #fatjet_tau2_axis  = hist.Bin("tau2",  r"lead. FatJet $\tau_{2}$", 50, 0, 1)
         fatjet_tau21_axis = hist.Bin("tau21", r"lead. FatJet $\tau_{21}$", 50, 0, 1)
         fatjet_n2b1_axis  = hist.Bin("n2b1", r"lead. FatJet $N_{2}^{(\beta=1)}$", 50, 0, 0.5)
         fatjet_pt_axis    = hist.Bin("pt",   r"lead. FatJet $p_{T}$ [GeV]", 250, 0, 1000)
@@ -62,8 +68,8 @@ class NanoProcessor(processor.ProcessorABC):
         #    }
         
         _hist_fatjet_dict = {
-                'fatjet_tau1'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_tau1_axis),
-                'fatjet_tau2'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_tau2_axis),
+                #'fatjet_tau1'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_tau1_axis),
+                #'fatjet_tau2'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_tau2_axis),
                 'fatjet_tau21' : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_tau21_axis),
                 'fatjet_n2b1'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_n2b1_axis),
                 'fatjet_pt'  : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_pt_axis),
@@ -107,16 +113,40 @@ class NanoProcessor(processor.ProcessorABC):
         _sumw_dict = {'sumw': processor.defaultdict_accumulator(float),
                       'nbtagmu': processor.defaultdict_accumulator(float),
                       'nbtagmu_event_level': processor.defaultdict_accumulator(float),
-            }
+            }        
 
         #self.jet_hists = list(_hist_jet_dict.keys())
         self.fatjet_hists = list(_hist_fatjet_dict.keys())
         self.event_hists = list(_hist_event_dict.keys())
 
         #_hist_dict = {**_hist_jet_dict, **_hist_fatjet_dict, **_hist2d_dict, **_hist_event_dict, **_sumw_dict}
-        _hist_dict = {**_hist_fatjet_dict, **_hist2d_dict, **_hist_event_dict, **_sumw_dict}
-        self._accumulator = processor.dict_accumulator(_hist_dict)
+        self._hist_dict = {**_hist_fatjet_dict, **_hist2d_dict, **_hist_event_dict}
+        self.append_mask()
+        self._hist_dict.update({**_sumw_dict})
+        self._accumulator = processor.dict_accumulator(self._hist_dict)
 
+    def append_mask(self):
+        masks = list(self._mask_fatjets.keys())
+        d = {}
+        for histname in self._hist_dict.keys():
+            h = self._hist_dict[histname]
+            d[f'{histname}_{masks[0]}'] = h
+            for maskname in masks[1:]:
+                d[f'{histname}_{maskname}'] = h.copy()
+        self._hist_dict = d.copy()
+        
+        l = []
+        for histname in self.fatjet_hists:
+            for maskname in masks:
+                l.append(f'{histname}_{maskname}')
+        self.fatjet_hists = l
+        l = []
+        for histname in self.event_hists:
+            for maskname in masks:
+                l.append(f'{histname}_{maskname}')
+        self.event_hists = l
+
+        return self._hist_dict
 
     @property
     def accumulator(self):
@@ -133,6 +163,9 @@ class NanoProcessor(processor.ProcessorABC):
         else:
             output['nbtagmu'][dataset] += ak.count(events.event)
 
+        def flatten(ar): # flatten awkward into a 1d array to hist
+            return ak.flatten(ar, axis=None)
+
         ##############
         # Trigger level
         triggers = [
@@ -142,6 +175,17 @@ class NanoProcessor(processor.ProcessorABC):
         "HLT_BTagMu_AK4Jet300_Mu5",
         ]
 
+        if self.year == 2016:
+            if 'Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ' not in events.HLT:
+                triggers = [trigger.replace('IsoVL_DZ', 'IsoVL') for trigger in triggers]
+            if 'BTagMu_AK4Jet300_Mu5' not in events.HLT:
+                triggers = [trigger.replace('AK4', '') for trigger in triggers]
+            print(triggers)
+        elif self.year == 2018:
+            for (i, trigger) in enumerate(triggers):
+                if trigger not in events.HLT:
+                    triggers[i] = trigger + "_noalgo"
+
         trig_arrs = [events.HLT[_trig.strip("HLT_")] for _trig in triggers]
         #req_trig = np.ones(len(events), dtype='bool')
         req_trig = np.zeros(len(events), dtype='bool')
@@ -150,8 +194,8 @@ class NanoProcessor(processor.ProcessorABC):
 
         ############
         # Event level
-        baseline_jet    = {var : ak.flatten(events.Jet[var], axis=None) for var in ['pt', 'eta', 'phi', 'mass']}
-        baseline_fatjet = {var : ak.flatten(events.FatJet[var], axis=None) for var in ['pt', 'eta', 'phi', 'msoftdrop']}
+        baseline_jet    = {var : flatten(events.Jet[var]) for var in ['pt', 'eta', 'phi', 'mass']}
+        baseline_fatjet = {var : flatten(events.FatJet[var]) for var in ['pt', 'eta', 'phi', 'msoftdrop']}
 
         ## Muon cuts
         # muon twiki: https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonIdRun2
@@ -171,173 +215,179 @@ class NanoProcessor(processor.ProcessorABC):
         events.Jet = events.Jet[(events.Jet.pt > 25) & (abs(events.Jet.eta) <= 2.5)]
         #req_jets = (ak.count(events.Jet.pt, axis=1) >= 2)
 
-        ## FatJet cuts
-        events.FatJet = events.FatJet[(events.FatJet.pt > 250) & (events.FatJet.mass > 20)]
-        #events.FatJet['tau21'] = events.FatJet.tau2/events.FatJet.tau1
-        req_fatjets = (ak.count(events.FatJet.pt, axis=1) >= 1)
-        req_subjets = ak.any(ak.count(events.FatJet.subjets.pt, axis=2) >= 2, axis=1)
+        #for selname, selection in self._mask_fatjets.items():
+        for selname in self._mask_fatjets.keys():
+            ## FatJet cuts
+            if selname == 'basic':
+                pt_cut    = 250
+                mass_cut  = 20
+                tau21_cut = 1.1
+                #events.FatJet = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut)]
+                sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut)]
+            elif selname == 'msd50':
+                pt_cut    = 250
+                mass_cut  = 50
+                tau21_cut = 1.1
+                sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut)]
+            elif selname == 'msd100tau06':
+                pt_cut    = 250
+                mass_cut  = 100
+                tau21_cut = 0.6
+                #events.FatJet = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut) & ((events.FatJet.tau2/events.FatJet.tau1) < tau21_cut)]
+                sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut) & ((events.FatJet.tau2/events.FatJet.tau1) < tau21_cut)]
+            #sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
+            req_fatjets = (ak.count(sfatjets.pt, axis=1) >= 1)
+            req_subjets = ak.any(ak.count(sfatjets.subjets.pt, axis=2) >= 2, axis=1)
 
-        #req_opposite_charge = events.Electron[:, 0].charge * events.Muon[:, 0].charge == -1
+            #req_opposite_charge = events.Electron[:, 0].charge * events.Muon[:, 0].charge == -1
 
-        event_level = req_trig & req_fatjets & req_subjets #& req_muons 
-        #event_level = req_trig & req_fatjets 
+            event_level = req_trig & req_fatjets & req_subjets #& req_muons 
+            #event_level = req_trig & req_fatjets 
 
-        # Selected
-        selev = events[event_level]
-        sweight = None
-        if not isRealData:
-            sweight = selev.genWeight
+            # Selected
+            selev = events[event_level]
+            nEvents = ak.count(selev.event)
+            sweight = None
+            if not isRealData:
+                sweight = selev.genWeight
 
-        #########
+            #########
 
-        # Per electron
-        el_eta   = (abs(selev.Electron.eta) <= 2.4)
-        el_pt    = selev.Electron.pt > 10
-        el_level = el_eta & el_pt
+            # Per electron
+            el_eta   = (abs(selev.Electron.eta) <= 2.4)
+            el_pt    = selev.Electron.pt > 10
+            el_level = el_eta & el_pt
 
-        # Per muon
-        mu_eta   = (abs(selev.Muon.eta) <= 2.4)
-        mu_pt    = selev.Muon.pt > 10
-        mu_not_iso = (selev.Muon.pfRelIso04_all > 0.15)
-        mu_not_tight = (selev.Muon.tightId != 1)
-        mu_level = mu_eta & mu_pt & mu_not_iso & mu_not_tight
+            # Per muon
+            mu_eta   = (abs(selev.Muon.eta) <= 2.4)
+            mu_pt    = selev.Muon.pt > 10
+            mu_not_iso = (selev.Muon.pfRelIso04_all > 0.15)
+            mu_not_tight = (selev.Muon.tightId != 1)
+            mu_level = mu_eta & mu_pt & mu_not_iso & mu_not_tight
 
-        # Per jet
-        jet_eta    = (abs(selev.Jet.eta) <= 2.4)
-        jet_pt     = selev.Jet.pt > 25
-        jet_pu     = selev.Jet.puId > 6
-        jet_level  = jet_pu & jet_eta & jet_pt
+            # Per jet
+            jet_eta    = (abs(selev.Jet.eta) <= 2.4)
+            jet_pt     = selev.Jet.pt > 25
+            jet_pu     = selev.Jet.puId > 6
+            jet_level  = jet_pu & jet_eta & jet_pt
 
-        # Per fatjet
-        fatjet_pt    = selev.FatJet.pt > 250
-        fatjet_mass  = selev.FatJet.mass > 20
-        #fatjet_tau21 = (selev.FatJet.tau2/selev.FatJet.tau1) < 0.5
-        fatjet_subjets = (ak.count(selev.FatJet.subjets.pt, axis=2) >= 2)
+            # Per fatjet
+            fatjet_pt      = selev.FatJet.pt > pt_cut
+            fatjet_mass    = selev.FatJet.mass > mass_cut
+            fatjet_tau21   = (selev.FatJet.tau2/selev.FatJet.tau1) < tau21_cut
+            fatjet_subjets = (ak.count(selev.FatJet.subjets.pt, axis=2) >= 2)
 
-        #fatjet_level = fatjet_pt & fatjet_mass & fatjet_tau21
-        fatjet_level = fatjet_pt & fatjet_mass & fatjet_subjets
-        #fatjet_level = ak.ones_like(fatjet_pt)
+            #fatjet_level = fatjet_pt & fatjet_mass & fatjet_tau21
+            fatjet_level = fatjet_pt & fatjet_mass & fatjet_tau21 & fatjet_subjets
+            self._mask_fatjets[selname] = fatjet_level
+            selection = self._mask_fatjets[selname]
+            # b-tag twiki : https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation102X
+            bjet_disc  = selev.Jet.btagDeepB > 0.7264 # L=0.0494, M=0.2770, T=0.7264
+            bjet_level = jet_level & bjet_disc
 
-        # b-tag twiki : https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation102X
-        bjet_disc  = selev.Jet.btagDeepB > 0.7264 # L=0.0494, M=0.2770, T=0.7264
-        bjet_level = jet_level & bjet_disc
+            sel      = selev.Electron[el_level]
+            smu      = selev.Muon[mu_level]
+            sjets    = selev.Jet[jet_level]
+            sbjets   = selev.Jet[bjet_level]
+            nfatjet  = ak.num(selev.FatJet[selection])
+        
+            sfatjets = ak.pad_none(selev.FatJet[selection], 1)[:,0]
+            sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
+            subjet1  = ak.pad_none(sfatjets.subjets, 2)[:, 0]
+            subjet2  = ak.pad_none(sfatjets.subjets, 2)[:, 1]
+            SV       = selev.SV
+            nsv1     = get_nsv(subjet1, SV)
+            nsv2     = get_nsv(subjet2, SV)
+            nmusj1   = ak.num(subjet1.delta_r(smu) < 0.4)
+            nmusj2   = ak.num(subjet2.delta_r(smu) < 0.4)
 
-        sel      = selev.Electron[el_level]
-        smu      = selev.Muon[mu_level]
-        sjets    = selev.Jet[jet_level]
-        sbjets   = selev.Jet[bjet_level]
-        sfatjets = ak.pad_none(selev.FatJet[fatjet_level], 1)[:,0]
-        sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
-        subjet1  = ak.pad_none(sfatjets.subjets, 2)[:, 0]
-        subjet2  = ak.pad_none(sfatjets.subjets, 2)[:, 1]
-        SV       = selev.SV
-        nsv1     = get_nsv(subjet1, SV)
-        nsv2     = get_nsv(subjet2, SV)
-        nmusj1   = ak.num(subjet1.delta_r(smu) < 0.4)
-        nmusj2   = ak.num(subjet2.delta_r(smu) < 0.4)
+            fatjet_mutag = (nmusj1 >= 1) & (nmusj2 >= 1)
 
-        fatjet_mutag = (nmusj1 >= 1) & (nmusj2 >= 1)
-        #fatjet_tau21 = sfatjets.tau21 < 0.75
-        #fatjet_nsv1 = nsv1 > 0
-        #fatjet_nsv12 = (nsv1 > 0) & (nsv2 > 0)
-        #fatjet_mutag = fatjet_mutag & fatjet_nsv12
-        sfatjets = sfatjets[fatjet_mutag]
-        sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
-        subjet1  = subjet1[fatjet_mutag]
-        subjet2  = subjet2[fatjet_mutag]
-        #print('nmusj1:', len(nmusj1))
-        #print('fatjet_mutag:', len(fatjet_mutag))
-        nmusj1   = nmusj1[fatjet_mutag]
-        nmusj2   = nmusj2[fatjet_mutag]
-        nsv1     = nsv1[fatjet_mutag]
-        nsv2     = nsv2[fatjet_mutag]
+            #fatjet_tau21 = sfatjets.tau21 < 0.75
+            #fatjet_nsv1 = nsv1 > 0
+            #fatjet_nsv12 = (nsv1 > 0) & (nsv2 > 0)
+            #fatjet_mutag = fatjet_mutag & fatjet_nsv12
+            sfatjets = sfatjets[fatjet_mutag]
+            sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
+            subjet1  = subjet1[fatjet_mutag]
+            subjet2  = subjet2[fatjet_mutag]
+            nsv1     = nsv1[fatjet_mutag]
+            nsv2     = nsv2[fatjet_mutag]
+            nmusj1   = nmusj1[fatjet_mutag]
+            nmusj2   = nmusj2[fatjet_mutag]
 
-        sweight_jets = None
-        sweight_fatjets = None
-        if not isRealData:
-            #sweight_fatjets = sweight[ak.any(fatjet_level, axis=1) & fatjet_mutag]
-            sweight_fatjets = sweight[ak.any(fatjet_level, axis=1)]
-            sweight_fatjets = ak.flatten(sweight_fatjets, axis=None)
+            sweight_jets = None
+            sweight_fatjets = None
+            if not isRealData:
+                sweight_fatjets = sweight[ak.any(selection, axis=1) & fatjet_mutag]
+                #sweight_fatjets = sweight[ak.any(selection, axis=1)]
+                sweight_fatjets = flatten(sweight_fatjets)
 
-        # Flavor matching
-        if not isRealData:
-            _b = (sfatjets.hadronFlavour == 5)
-            _c = (sfatjets.hadronFlavour == 4)
-            _l = (sfatjets.hadronFlavour < 4)
-            _bb = abs(sfatjets.hadronFlavour == 5) & (sfatjets.nBHadrons >= 2) #& (sfatjets.nCHadrons == 0)
-            _cc = abs(sfatjets.hadronFlavour == 4) & (sfatjets.nBHadrons == 0) & (sfatjets.nCHadrons >= 2)
-            #_ll = abs(sfatjets.hadronFlavour < 4) & (sfatjets.nBHadrons == 0) & (sfatjets.nCHadrons == 0)
-            _b = _b & ~_bb
-            _c = _c & ~_cc
-            _l = _l & ~_bb & ~_cc & ~_b & ~_c
-            #_others = ~_l & ~_bb & ~_cc & ~_b & ~_c
-            flavor = _bb*5 + _cc*4 + _b*3 + _c*2 + _l*1
-        else:
-            output['nbtagmu_event_level'][dataset] += ak.count_nonzero(event_level)
+            # Flavor matching
+            if not isRealData:
+                _b = (sfatjets.hadronFlavour == 5)
+                _c = (sfatjets.hadronFlavour == 4)
+                _l = (sfatjets.hadronFlavour < 4)
+                _bb = abs(sfatjets.hadronFlavour == 5) & (sfatjets.nBHadrons >= 2) #& (sfatjets.nCHadrons == 0)
+                _cc = abs(sfatjets.hadronFlavour == 4) & (sfatjets.nBHadrons == 0) & (sfatjets.nCHadrons >= 2)
+                #_ll = abs(sfatjets.hadronFlavour < 4) & (sfatjets.nBHadrons == 0) & (sfatjets.nCHadrons == 0)
+                _b = _b & ~_bb
+                _c = _c & ~_cc
+                _l = _l & ~_bb & ~_cc & ~_b & ~_c
+                #_others = ~_l & ~_bb & ~_cc & ~_b & ~_c
+                flavor = _bb*5 + _cc*4 + _b*3 + _c*2 + _l*1
+            else:
+                output['nbtagmu_event_level'][dataset] += ak.count_nonzero(event_level)
 
-        """
-        if not isRealData:
-            sbbfatjets = ak.pad_none(selev.FatJet[_bb], 1)[:,0]
-            sbbfatjets['tau21'] = sbbfatjets.tau2/sbbfatjets.tau1
-            sccfatjets = ak.pad_none(selev.FatJet[_cc], 1)[:,0]
-            sccfatjets['tau21'] = sccfatjets.tau2/sccfatjets.tau1
-        """
+            # Fill histograms dynamically
+            for histname, h in output.items():
+                if not selname in histname: continue
+                #if histname in self.jet_hists:
+                #    fields = {k: flatten(sjets[k]) for k in h.fields if k in dir(sjets)}
+                #    fields.update({k: flatten(sjets[k]) for k in h.fields if k.split('jet_')[-1] in ['pt', 'eta', 'phi', 'mass']})
+                #    if isRealData:
+                #        h.fill(dataset=dataset, **fields)
+                #    else:
+                #        h.fill(dataset=dataset, **fields, weight=sweight_jets)
+                if ((histname in self.fatjet_hists) | ('hist2d_fatjet' in histname)):
+                    fields = {k: flatten(sfatjets[k]) for k in h.fields if k in dir(sfatjets)}
+                    #fields.update({k: flatten(sfatjets[k]) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
+                    #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=sweight_fatjets)
+                    if isRealData:
+                        h.fill(dataset=dataset, flavor="Data", **fields)
+                    else:
+                        #for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb', 'others'], [_l, _c, _b, _cc, _bb, _others]):
+                        for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb'], [_l, _c, _b, _cc, _bb]):
+                            sfatjets_flavor = sfatjets[mask]
+                            sweight_fatjets_flavor = flatten(sweight_fatjets[mask])
+                            fields = {k: flatten(sfatjets_flavor[k]) for k in h.fields if k in dir(sfatjets_flavor)}
+                            #fields.update({k: flatten(sfatjets_flavor[k]) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
+                            h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
 
-        # output['pt'].fill(dataset=dataset, pt=selev.Jet.pt.flatten())
-        # Fill histograms dynamically
-        for histname, h in output.items():
-            #if histname in self.jet_hists:
-            #    fields = {k: ak.flatten(sjets[k], axis=None) for k in h.fields if k in dir(sjets)}
-            #    fields.update({k: ak.flatten(sjets[k], axis=None) for k in h.fields if k.split('jet_')[-1] in ['pt', 'eta', 'phi', 'mass']})
-            #    if isRealData:
-            #        h.fill(dataset=dataset, **fields)
-            #    else:
-            #        h.fill(dataset=dataset, **fields, weight=sweight_jets)
-            if ((histname in self.fatjet_hists) | ('hist2d_fatjet' in histname)):
-                fields = {k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k in dir(sfatjets)}
-                #fields.update({k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
-                #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=sweight_fatjets)
-                if isRealData:
-                    h.fill(dataset=dataset, flavor="Data", **fields)
-                else:
-                    #for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb', 'others'], [_l, _c, _b, _cc, _bb, _others]):
-                    for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb'], [_l, _c, _b, _cc, _bb]):
-                        sfatjets_flavor = sfatjets[mask]
-                        sweight_fatjets_flavor = ak.flatten(sweight_fatjets[mask], axis=None)
-                        fields = {k: ak.flatten(sfatjets_flavor[k], axis=None) for k in h.fields if k in dir(sfatjets_flavor)}
-                        #fields.update({k: ak.flatten(sfatjets_flavor[k], axis=None) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
-                        h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
-
-            elif (((histname in self.event_hists) | ('hist2d_nsv' in histname) | ('hist2d_nmusj' in histname)) & (not histname in ['njet', 'nbjet', 'nel', 'nmu', 'nfatjet'])):
-                fields = {k: ak.flatten(sfatjets[k], axis=None) for k in h.fields if k in dir(sfatjets)}
-                for varname, values in zip(['nsv1', 'nsv2', 'nmusj1', 'nmusj2'], [nsv1, nsv2, nmusj1, nmusj2]):
-                    if varname in histname:
-                        fields.update({varname: ak.flatten(values, axis=None)})
-                #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=sweight_fatjets)
-                if isRealData:
-                    h.fill(dataset=dataset, flavor="Data", **fields)
-                else:
-                    for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb'], [_l, _c, _b, _cc, _bb]):
-                        sfatjets_flavor = sfatjets[mask]
-                        sweight_fatjets_flavor = ak.flatten(sweight_fatjets[mask], axis=None)                        
-                        fields = {k: ak.flatten(sfatjets_flavor[k], axis=None) for k in h.fields if k in dir(sfatjets_flavor)}
-                        for varname, values in zip(['nsv1', 'nsv2', 'nmusj1', 'nmusj2'], [nsv1, nsv2, nmusj1, nmusj2]):
-                            if varname in histname:
-                                fields.update({varname: ak.flatten(values[mask], axis=None)})
-                        h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
-            else: continue
-
-        def flatten(ar): # flatten awkward into a 1d array to hist
-            return ak.flatten(ar, axis=None)
-
-        def num(ar):
-            return ak.num(ak.fill_none(ar[~ak.is_none(ar)], 0), axis=0)
+                elif (((histname in self.event_hists) | ('hist2d_nsv' in histname) | ('hist2d_nmusj' in histname)) & (not histname in ['njet', 'nbjet', 'nel', 'nmu'])):
+                    fields = {k: flatten(sfatjets[k]) for k in h.fields if k in dir(sfatjets)}
+                    for varname, values in zip(['nfatjet', 'nsv1', 'nsv2', 'nmusj1', 'nmusj2'], [nfatjet, nsv1, nsv2, nmusj1, nmusj2]):
+                        if varname in histname:
+                            fields.update({varname: flatten(values)})
+                    #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=sweight_fatjets)
+                    if isRealData:
+                        h.fill(dataset=dataset, flavor="Data", **fields)
+                    else:
+                        for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb'], [_l, _c, _b, _cc, _bb]):
+                            sfatjets_flavor = sfatjets[mask]
+                            sweight_fatjets_flavor = flatten(sweight_fatjets[mask])                        
+                            fields = {k: flatten(sfatjets_flavor[k]) for k in h.fields if k in dir(sfatjets_flavor)}
+                            for varname, values in zip(['nfatjet', 'nsv1', 'nsv2', 'nmusj1', 'nmusj2'], [nfatjet, nsv1, nsv2, nmusj1, nmusj2]):
+                                if varname in histname:
+                                    fields.update({varname: flatten(values[mask])})
+                            h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
+                else: continue
 
         #output['njet'].fill(dataset=dataset,    njet=ak.num(sjets))
         #output['nbjet'].fill(dataset=dataset,   nbjet=ak.num(sbjets))
         #output['nel'].fill(dataset=dataset,     nel=ak.num(sel))
         #output['nmu'].fill(dataset=dataset,     nmu=ak.num(smu))
-        output['nfatjet'].fill(dataset=dataset, flavor="inclusive", nfatjet=num(sfatjets))
+        #output['nfatjet'].fill(dataset=dataset, flavor="inclusive", nfatjet=num(sfatjets))
         #output['nmusj1'].fill(dataset=dataset,  flavor="inclusive", nmusj1=flatten(nmusj1))
         #output['nmusj2'].fill(dataset=dataset,  flavor="inclusive", nmusj2=flatten(nmusj2))
         #output['nsv1'].fill(dataset=dataset,    flavor="inclusive", nsv1=ak.fill_none(nsv1, -1))
@@ -349,7 +399,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         #isSplit = (len(accumulator['sumw'].keys()) <= 1)
         #if not isSplit:
-            #accumulator = rescale(accumulator, xsecs, lumi[args.year])
+            #accumulator = rescale(accumulator, xsecs, lumi[self.year])
             #accumulator = rescale(accumulator, xsecs, lumi[2017])
 
         return accumulator
