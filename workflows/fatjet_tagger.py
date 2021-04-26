@@ -11,9 +11,9 @@ class NanoProcessor(processor.ProcessorABC):
     def __init__(self, year=2017):
         self.year = year
         self._mask_fatjets = {
-          #'basic'       : None,
+          'basic'       : None,
           'msd50'       : None,
-          #'msd100tau06' : None,
+          'msd100tau06' : None,
         }
         # Define axes
         # Should read axes from NanoAOD config
