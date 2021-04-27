@@ -3,10 +3,11 @@ import sys
 import json
 import argparse
 import time
+import gc
 
 import numpy as np
 
-import uproot as uproot
+import uproot
 from coffea import hist
 from coffea.nanoevents import NanoEventsFactory
 from coffea.util import load, save
@@ -41,7 +42,7 @@ if __name__ == '__main__':
 	parser.add_argument( '--wf', '--workflow', dest='workflow', choices=['ttcom', 'fattag'], help='Which processor to run', required=True)
 	parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
 	parser.add_argument('--samples', '--json', dest='samplejson', default='dummy_samples.json', help='JSON file containing dataset and file locations (default: %(default)s)')
-	parser.add_argument('--year', type=int, choices=['2016', '2017', '2018'], default='2017', help='Year of data/MC samples')
+	parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
 
 	# Scale out
 	parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/condor', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
@@ -57,18 +58,26 @@ if __name__ == '__main__':
 	parser.add_argument('--limit', type=int, default=None, metavar='N', help='Limit to the first N files of each dataset in sample JSON')
 	parser.add_argument('--chunk', type=int, default=500000, metavar='N', help='Number of events per process chunk')
 	parser.add_argument('--max', type=int, default=None, metavar='N', help='Max number of chunks to run in total')
+	parser.add_argument('--offset', type=int, default=None, metavar='N', help='Offset in JSON reading')
+	parser.add_argument('--dataset', type=str, default=None, help='Dataset in the JSON file to process')
 
 	args = parser.parse_args()
 	if args.output == parser.get_default('output'):
 		args.output = f'hists_{args.workflow}_{(args.samplejson).rstrip(".json")}.coffea'
 
-
 	# load dataset
 	with open(args.samplejson) as f:
 		sample_dict = json.load(f)
 
-	for key in sample_dict.keys():
-		sample_dict[key] = sample_dict[key][:args.limit]
+	if args.dataset != parser.get_default('dataset'):
+		sample_dict = {args.dataset : sample_dict[args.dataset]}
+
+	if args.offset != parser.get_default('offset'):
+		for key in sample_dict.keys():
+			sample_dict[key] = sample_dict[key][args.offset:args.offset+args.limit]
+	else:
+		for key in sample_dict.keys():
+			sample_dict[key] = sample_dict[key][:args.limit]
 
 	# For debugging
 	if args.only is not None:
@@ -121,7 +130,7 @@ if __name__ == '__main__':
 		processor_instance = NanoProcessor()
 	elif args.workflow == "fattag":
 		from workflows.fatjet_tagger import NanoProcessor
-		processor_instance = NanoProcessor(year='2017')
+		processor_instance = NanoProcessor(year=args.year)
 	else:
 		raise NotImplemented
 
@@ -140,6 +149,21 @@ if __name__ == '__main__':
 			f'export X509_CERT_DIR={os.environ["X509_CERT_DIR"]}',
 			'ulimit -u 32768',
 		]
+
+		wrk_init = [
+			f'export X509_USER_PROXY={_x509_path}',
+			f'export X509_CERT_DIR={os.environ["X509_CERT_DIR"]}',
+			'source /etc/profile.d/conda.sh',
+			'export PATH=$CONDA_PREFIX/bin:$PATH',
+			'conda activate btv',
+			'cd /afs/cern.ch/work/m/mmarcheg/BTVNanoCommissioning/',
+		]
+
+		condor_cfg = '''
+		getenv      =  True
+		+JobFlavour =  "nextweek"
+		'''
+		#process_worker_pool = os.environ['CONDA_PREFIX'] + "/bin/process_worker_pool.py"
 
 	#########
 	# Execute
@@ -165,7 +189,6 @@ if __name__ == '__main__':
 			if not os.path.exists(hist_dir):
 				os.makedirs(hist_dir)
 			for dataset in sample_dict.keys():
-				print("Processing " + dataset)
 				output = processor.run_uproot_job({dataset : sample_dict[dataset]},
 											treename='Events',
 											processor_instance=processor_instance,
@@ -179,7 +202,8 @@ if __name__ == '__main__':
 				filepath = hist_dir + args.output.replace(".coffea", "_" + dataset + ".coffea")
 				save(output, filepath)
 				print(f"Saving output to {filepath}")
-				output_split.append(output)
+				del output
+				#output_split.append(output)
 	#elif args.executor == 'parsl/slurm':
 	elif 'parsl' in args.executor:
 		import parsl
@@ -199,13 +223,13 @@ if __name__ == '__main__':
 						prefetch_capacity=0,
 						provider=SlurmProvider(
 							channel=LocalChannel(script_dir='logs_parsl'),
-							#launcher=SrunLauncher(),
-							launcher=SingleNodeLauncher(),
+							launcher=SrunLauncher(),
+							#launcher=SingleNodeLauncher(),
 							max_blocks=(args.scaleout)+10,
 							init_blocks=args.scaleout,
 							partition='wn',
 							worker_init="\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
-							walltime='00:1440:00'
+							walltime='02:00:00'
 						),
 					)
 				],
@@ -245,30 +269,34 @@ if __name__ == '__main__':
 					filepath = hist_dir + args.output.replace(".coffea", "_" + dataset + ".coffea")
 					save(output, filepath)
 					print(f"Saving output to {filepath}")
-					output_split.append(output)
+					del output
+					#output_split.append(output)
 		elif 'condor' in args.executor:
-			slurm_htex = Config(
+			#xfer_files = [process_worker_pool, _x509_path]
+			#print(xfer_files)
+
+			condor_htex = Config(
 				executors=[
 					HighThroughputExecutor(
 						label="coffea_parsl_slurm",
 						#address=address_by_hostname(),
-                                                worker_ports=(8786,8785),
+						worker_ports=(8786,8785),
 						prefetch_capacity=0,
 						provider=CondorProvider(
 							channel=LocalChannel(script_dir='logs_parsl'),
 							launcher=SingleNodeLauncher(),
 							max_blocks=(args.scaleout)+10,
 							init_blocks=args.scaleout,
-							#partition='wn',
-							worker_init= wrk_init, #"\n".join(env_extra) + "\nexport PYTHONPATH=$PYTHONPATH:$PWD",
-                                                        scheduler_options=condor_cfg,
-							#walltime='00:1440:00'
+							worker_init="\n".join(wrk_init),
+							#transfer_input_files=xfer_files,
+							scheduler_options=condor_cfg,
+							walltime='00:30:00'
 						),
 					)
 				],
-				retries=20,
+				#retries=20,
 			)
-			dfk = parsl.load(slurm_htex)
+			dfk = parsl.load(condor_htex)
 
 			if not args.splitdataset:
 				output = processor.run_uproot_job(sample_dict,
@@ -324,20 +352,39 @@ if __name__ == '__main__':
 							)
 
 	if not args.splitdataset:
-		output = rescale(output, xsecs, lumi[args.year])
-		save(output, hist_dir + args.output)
-		print(output)
-		print(f"Saving output to {hist_dir + args.output}")
+		if args.offset == parser.get_default("offset"):
+			if len(sample_dict.keys()) > 1:
+				output = rescale(output, xsecs, lumi[args.year])
+				#output = rescale(output, xsecs, lumi[args.year], "JetHT")
+			save(output, hist_dir + args.output)
+			print(output)
+			print(f"Saving output to {hist_dir + args.output}")
+		else:
+			# In this case the MC is not rescaled yet
+			print("No MC rescaling applied")
+			hist_dir = hist_dir + args.output.split(".coffea")[0] + "/"
+			if not os.path.exists(hist_dir):
+				os.makedirs(hist_dir)
+			args.output = args.output.replace(".coffea", "_0" + str(args.offset) + ".coffea")
+			save(output, hist_dir + args.output)
+			print(output)
+			print(f"Saving output to {hist_dir + args.output}")
+
 	else:
-		accumulator = output_split[0]
-		histograms = output_split[0].keys()
+		files_list = [file for file in os.listdir(hist_dir) if file != args.output]
+		#accumulator = output_split[0]
+		accumulator = load(hist_dir + files_list[0])
+		histograms = accumulator.keys()
 		for histname in histograms:
-			for output in output_split:
+			for file in files_list[1:]:
+				output = load(hist_dir + file)
 				accumulator[histname].add(output[histname])
+				del output
 
 		if not os.path.exists(hist_dir):
 			os.makedirs(hist_dir)
-		accumulator = rescale(accumulator, xsecs, lumi[args.year])
+		if len(sample_dict.keys()) > 1:
+			accumulator = rescale(accumulator, xsecs, lumi[args.year])
 		save(accumulator, hist_dir + args.output)
 		print(accumulator)
 		print(f"Saving output to {hist_dir + args.output}")
