@@ -22,6 +22,12 @@ xsecs = {
     "QCD_Pt-600to800_MuEnrichedPt5"  : 18.21,
     "QCD_Pt-800to1000_MuEnrichedPt5" : 3.275,
     "QCD_Pt-1000toInf_MuEnrichedPt5" : 1.078,
+    "QCD_Pt-170to300_MuEnrichedPt5_TuneCP5_13TeV_pythia8"  : 7055.0,
+    "QCD_Pt-300to470_MuEnrichedPt5_TuneCP5_13TeV_pythia8"  : 619.3,
+    "QCD_Pt-470to600_MuEnrichedPt5_TuneCP5_13TeV_pythia8"  : 59.24,
+    "QCD_Pt-600to800_MuEnrichedPt5_TuneCP5_13TeV_pythia8"  : 18.21,
+    "QCD_Pt-800to1000_MuEnrichedPt5_TuneCP5_13TeV_pythia8" : 3.275,
+    "QCD_Pt-1000toInf_MuEnrichedPt5_TuneCP5_13TeV_pythia8" : 1.078,
 
     "GluGluHToBB_M-125_13TeV"  : 27.8,
     "GluGluHToCC_M-125_13TeV"  : 27.8,
