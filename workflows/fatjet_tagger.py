@@ -15,7 +15,7 @@ class NanoProcessor(processor.ProcessorABC):
         self.year = year
         self._mask_fatjets = {
           'basic'       : None,
-          'msd50'       : None,
+          'pt350msd50'  : None,
           'msd100tau06' : None,
         }
         self.year = year
@@ -48,10 +48,10 @@ class NanoProcessor(processor.ProcessorABC):
         #fatjet_tau2_axis  = hist.Bin("tau2",  r"lead. FatJet $\tau_{2}$", 50, 0, 1)
         fatjet_tau21_axis = hist.Bin("tau21", r"lead. FatJet $\tau_{21}$", 50, 0, 1)
         fatjet_n2b1_axis  = hist.Bin("n2b1", r"lead. FatJet $N_{2}^{(\beta=1)}$", 50, 0, 0.5)
-        fatjet_pt_axis    = hist.Bin("pt",   r"lead. FatJet $p_{T}$ [GeV]", 250, 0, 1000)
+        fatjet_pt_axis    = hist.Bin("pt",   r"lead. FatJet $p_{T}$ [GeV]", 600, 0, 3000)
         fatjet_eta_axis   = hist.Bin("eta",  r"lead. FatJet $\eta$", 60, -3, 3)
         fatjet_phi_axis   = hist.Bin("phi",  r"lead. FatJet $\phi$", 60, -np.pi, np.pi)
-        fatjet_mass_axis  = hist.Bin("mass", r"lead. FatJet $m_{SD}$ [GeV]", 300, 0, 300)
+        fatjet_mass_axis  = hist.Bin("mass", r"lead. FatJet $m_{SD}$ [GeV]", 1000, 0, 1000)
         #lfjpt_axis     = hist.Bin("lfjpt", r"Leading fatjet $p_{T}$ [GeV]", 250, 0, 1000)
 
         # Define similar axes dynamically
@@ -60,9 +60,9 @@ class NanoProcessor(processor.ProcessorABC):
         btag_axes = []
         btag_axes_fj = []
         for d in disc_list:
-            btag_axes.append(hist.Bin(d, d, 50, 0, 1))
+            btag_axes.append(hist.Bin(d, d, 40, 0, 1))
         for d in disc_list_fj:
-            btag_axes_fj.append(hist.Bin(d, d, 50, 0, 1))
+            btag_axes_fj.append(hist.Bin(d, d, 40, 0, 1))
 
         # Define histograms from axes
         #_hist_jet_dict = {
@@ -192,20 +192,23 @@ class NanoProcessor(processor.ProcessorABC):
         # Trigger level
         triggers = [
         #"HLT_Mu12_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ",
-        "HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ",
+        #"HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ",
         "HLT_BTagMu_AK8Jet300_Mu5",
         "HLT_BTagMu_AK4Jet300_Mu5",
         ]
 
         if self.year == 2016:
-            if 'Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ' not in events.HLT:
-                triggers = [trigger.replace('IsoVL_DZ', 'IsoVL') for trigger in triggers]
-            if 'BTagMu_AK4Jet300_Mu5' not in events.HLT:
+            jetId_cut = 3
+            #if 'Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ' not in events.HLT:
+            #    triggers = [trigger.replace('IsoVL_DZ', 'IsoVL') for trigger in triggers]
+            if 'BTagMu_AK4Jet300_Mu5' not in events.HLT.fields:
                 triggers = [trigger.replace('AK4', '') for trigger in triggers]
-            print(triggers)
+        elif self.year == 2017:
+            jetId_cut = 2
         elif self.year == 2018:
+            jetId_cut = 2
             for (i, trigger) in enumerate(triggers):
-                if trigger not in events.HLT:
+                if trigger.strip("HLT_") not in events.HLT.fields:
                     triggers[i] = trigger + "_noalgo"
 
         trig_arrs = [events.HLT[_trig.strip("HLT_")] for _trig in triggers]
@@ -237,26 +240,25 @@ class NanoProcessor(processor.ProcessorABC):
         events.Jet = events.Jet[(events.Jet.pt > 25) & (abs(events.Jet.eta) <= 2.5)]
         #req_jets = (ak.count(events.Jet.pt, axis=1) >= 2)
 
-        #for selname, selection in self._mask_fatjets.items():
         for selname in self._mask_fatjets.keys():
             ## FatJet cuts
             if selname == 'basic':
                 pt_cut    = 250
                 mass_cut  = 20
                 tau21_cut = 1.1
-                #events.FatJet = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut)]
-                sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut)]
-            elif selname == 'msd50':
-                pt_cut    = 250
+            elif selname == 'pt350msd50':
+                pt_cut    = 350
                 mass_cut  = 50
                 tau21_cut = 1.1
-                sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut)]
             elif selname == 'msd100tau06':
-                pt_cut    = 250
+                pt_cut    = 350
                 mass_cut  = 100
                 tau21_cut = 0.6
-                #events.FatJet = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut) & ((events.FatJet.tau2/events.FatJet.tau1) < tau21_cut)]
-                sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) & (events.FatJet.mass > mass_cut) & ((events.FatJet.tau2/events.FatJet.tau1) < tau21_cut)]
+            sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) &
+                                     (events.FatJet.mass > mass_cut) &
+                                     (abs(events.FatJet.eta) < 2.4) &
+                                     (events.FatJet.jetId >= jetId_cut) &
+                                     ((events.FatJet.tau2/events.FatJet.tau1) < tau21_cut)]
             #sfatjets['tau21'] = sfatjets.tau2/sfatjets.tau1
             req_fatjets = (ak.count(sfatjets.pt, axis=1) >= 1)
             req_subjets = ak.any(ak.count(sfatjets.subjets.pt, axis=2) >= 2, axis=1)
