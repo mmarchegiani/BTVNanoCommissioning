@@ -31,6 +31,7 @@ if __name__ == '__main__':
 	parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
 	parser.add_argument('--samples', '--json', dest='samplejson', default='dummy_samples.json', help='JSON file containing dataset and file locations (default: %(default)s)')
 	parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
+	parser.add_argument('--trigger', type=str, choices=['HLT_BTagMu_AK8Jet300_Mu5', 'HLT_BTagMu_AK4Jet300_Mu5'], default=None, help='Single trigger to use', required=False)
 
 	# Scale out
 	parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/condor', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
@@ -118,7 +119,7 @@ if __name__ == '__main__':
 		processor_instance = NanoProcessor()
 	elif args.workflow == "fattag":
 		from workflows.fatjet_tagger import NanoProcessor
-		processor_instance = NanoProcessor(year=args.year)
+		processor_instance = NanoProcessor(year=args.year, trigger=args.trigger)
 	else:
 		raise NotImplemented
 
