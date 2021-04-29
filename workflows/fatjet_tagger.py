@@ -8,8 +8,9 @@ from utils import rescale, get_nsv, lumi, xsecs
 
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
-    def __init__(self, year=2017):
+    def __init__(self, year=2017, trigger=None):
         self.year = year
+        self.trigger = trigger
         self._mask_fatjets = {
           'basic'       : None,
           'pt350msd50'  : None,
@@ -174,6 +175,8 @@ class NanoProcessor(processor.ProcessorABC):
         "HLT_BTagMu_AK8Jet300_Mu5",
         "HLT_BTagMu_AK4Jet300_Mu5",
         ]
+        if self.trigger != None:
+            triggers = [t for t in triggers if t == self.trigger]
 
         if self.year == 2016:
             jetId_cut = 3
