@@ -1,5 +1,8 @@
 import coffea
-from coffea import hist, processor
+from coffea import hist, processor, lookup_tools
+from coffea.util import load
+from coffea.jetmet_tools import FactorizedJetCorrector, JetCorrectionUncertainty
+from coffea.jetmet_tools import JECStack, CorrectedJetsFactory
 import os
 import numpy as np
 import awkward as ak
@@ -19,7 +22,6 @@ class NanoProcessor(processor.ProcessorABC):
           'msd100tau06' : None,
         }
         self.year = year
-        self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'
         # Define axes
         # Should read axes from NanoAOD config
         dataset_axis = hist.Cat("dataset", "Primary dataset")
@@ -130,6 +132,15 @@ class NanoProcessor(processor.ProcessorABC):
         #self.jesArchive = tarfile.open( self.jecFile, "r:gz")
         #self.jesInputFilePath = tempfile.mkdtemp()
         #self.jesArchive.extractall(self.jesInputFilePath)
+        if self.year == 2016:
+            self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/PileUp/PrelLum15And1613TeV/PileupHistogram-goldenJSON-13tev-2016-69200ub-99bins.root'
+            self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2017.coffea'
+        if self.year == 2017:
+            self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'
+            self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2017.coffea'
+        if self.year == 2018:
+            self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions18/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'
+            self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2017.coffea'
 
         #_hist_dict = {**_hist_jet_dict, **_hist_fatjet_dict, **_hist2d_dict, **_hist_event_dict, **_sumw_dict}
         self._hist_dict = {**_hist_fatjet_dict, **_hist2d_dict, **_hist_event_dict}
@@ -160,14 +171,83 @@ class NanoProcessor(processor.ProcessorABC):
 
         return self._hist_dict
 
-    def puReweight(self, puFile, mcNtrueInt ):
+    def puReweight(self, puFile, nTrueFile, dataset ):
+
+        nTrueIntLoad = load(nTrueFile)
+        nTrueInt = [y for x,y in nTrueIntLoad[dataset].sum('dataset').values().items()][0]  ## not sure is the best way
 
         with uproot.open(puFile) as file_pu:
             norm = lambda x: x / x.sum()
-            data = norm(file_pu['pileup'].values)
-            #data = norm(file_pu['Pileup_nTrueInt'].values)
-            print(data)
-        return True
+            data = norm(file_pu['pileup'].counts())
+            mc_pu = norm(nTrueInt)
+            mask = mc_pu > 0.
+            corr = data.copy()
+            corr[mask] /= mc_pu[mask]
+            pileup_corr = lookup_tools.dense_lookup.dense_lookup(corr, file_pu["pileup"].axis().edges())
+        return pileup_corr
+
+    def applyJEC( self, jets, fixedGridRhoFastjetAll, events_cache ):
+
+        ext = lookup_tools.extractor()
+        ext.add_weight_sets([
+            "* * correction_files/JEC/Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi.txt",
+            "* * correction_files/JEC/Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi.txt",
+        ])
+        ext.finalize()
+        evaluator = ext.make_evaluator()
+
+        print("available evaluator keys:")
+        for key in evaluator.keys():
+            print("\t", key)
+
+        print()
+        print("Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi:")
+        print(evaluator['Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi'])
+
+        jec_stack_names = ["Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi",
+                   "Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi"]
+
+        jec_inputs = {name: evaluator[name] for name in jec_stack_names}
+        jec_stack = JECStack(jec_inputs)
+
+        print(dir(evaluator))
+        print()
+        name_map = jec_stack.blank_name_map
+        name_map['JetPt'] = 'pt'
+        name_map['JetMass'] = 'mass'
+        name_map['JetEta'] = 'eta'
+        name_map['JetA'] = 'area'
+
+        jets['pt_raw'] = (1 - jets['rawFactor']) * jets['pt']
+        jets['mass_raw'] = (1 - jets['rawFactor']) * jets['mass']
+        jets['pt_gen'] = ak.values_astype(ak.fill_none(jets.matched_gen.pt, 0), np.float32)
+        jets['rho'] = ak.broadcast_arrays(fixedGridRhoFastjetAll, jets.pt)[0]
+        name_map['ptGenJet'] = 'pt_gen'
+        name_map['ptRaw'] = 'pt_raw'
+        name_map['massRaw'] = 'mass_raw'
+        name_map['Rho'] = 'rho'
+
+        corrector = FactorizedJetCorrector(
+            Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi=evaluator['Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi'],
+            Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi=evaluator['Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi'],
+        )
+
+        jet_factory = CorrectedJetsFactory(name_map, jec_stack)
+        corrected_jets = jet_factory.build(jets, lazy_cache=events_cache)
+        print()
+        print('starting columns:',ak.fields(jets))
+        print()
+
+        print('untransformed pt ratios',jets.pt/jets.pt_raw)
+        print('untransformed mass ratios',jets.mass/jets.mass_raw)
+
+        print('transformed pt ratios',corrected_jets.pt/corrected_jets.pt_raw)
+        print('transformed mass ratios',corrected_jets.mass/corrected_jets.mass_raw)
+
+        print()
+        print('transformed columns:', ak.fields(corrected_jets))
+        return corrected_jets
+
 
     @property
     def accumulator(self):
@@ -184,7 +264,14 @@ class NanoProcessor(processor.ProcessorABC):
         else:
             output['nbtagmu'][dataset] += ak.count(events.event)
 
-        self.puReweight( self.puFile, events.nTrueInt )
+        weights = processor.Weights(len(events))
+        corrections = {}
+        if not isRealData:
+            weights.add( 'genWeight', events.genWeight)
+            weights.add( 'pileup_weight', self.puReweight( self.puFile, self.nTrueFile, dataset )( events.Pileup.nPU )  )
+
+        events.FatJet = self.applyJEC( events.FatJet, events.fixedGridRhoFastjetAll, events.caches[0] )
+
         def flatten(ar): # flatten awkward into a 1d array to hist
             return ak.flatten(ar, axis=None)
 
@@ -255,7 +342,7 @@ class NanoProcessor(processor.ProcessorABC):
                 mass_cut  = 100
                 tau21_cut = 0.6
             sfatjets = events.FatJet[(events.FatJet.pt > pt_cut) &
-                                     (events.FatJet.mass > mass_cut) &
+                                     (events.FatJet.msoftdrop > mass_cut) &
                                      (abs(events.FatJet.eta) < 2.4) &
                                      (events.FatJet.jetId >= jetId_cut) &
                                      ((events.FatJet.tau2/events.FatJet.tau1) < tau21_cut)]
@@ -271,9 +358,6 @@ class NanoProcessor(processor.ProcessorABC):
             # Selected
             selev = events[event_level]
             nEvents = ak.count(selev.event)
-            sweight = None
-            if not isRealData:
-                sweight = selev.genWeight
 
             #########
 
@@ -297,7 +381,7 @@ class NanoProcessor(processor.ProcessorABC):
 
             # Per fatjet
             fatjet_pt      = selev.FatJet.pt > pt_cut
-            fatjet_mass    = selev.FatJet.mass > mass_cut
+            fatjet_mass    = selev.FatJet.msoftdrop > mass_cut
             fatjet_tau21   = (selev.FatJet.tau2/selev.FatJet.tau1) < tau21_cut
             fatjet_subjets = (ak.count(selev.FatJet.subjets.pt, axis=2) >= 2)
 
@@ -340,12 +424,7 @@ class NanoProcessor(processor.ProcessorABC):
             nmusj1   = nmusj1[fatjet_mutag]
             nmusj2   = nmusj2[fatjet_mutag]
 
-            sweight_jets = None
-            sweight_fatjets = None
-            if not isRealData:
-                sweight_fatjets = sweight[ak.any(selection, axis=1) & fatjet_mutag]
-                #sweight_fatjets = sweight[ak.any(selection, axis=1)]
-                sweight_fatjets = flatten(sweight_fatjets)
+            fatjet_mutag_level = ak.any(selection, axis=1) & fatjet_mutag
 
             # Flavor matching
             if not isRealData:
@@ -372,39 +451,37 @@ class NanoProcessor(processor.ProcessorABC):
                 #    if isRealData:
                 #        h.fill(dataset=dataset, **fields)
                 #    else:
-                #        h.fill(dataset=dataset, **fields, weight=sweight_jets)
+                #        h.fill(dataset=dataset, **fields, weight=weights.weight()[event_level][fatjet_mutag_level])
                 if ((histname in self.fatjet_hists) | ('hist2d_fatjet' in histname)):
                     fields = {k: flatten(sfatjets[k]) for k in h.fields if k in dir(sfatjets)}
                     #fields.update({k: flatten(sfatjets[k]) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
-                    #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=sweight_fatjets)
+                    #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=weights.weight()[event_level][fatjet_mutag_level][mask])
                     if isRealData:
                         h.fill(dataset=dataset, flavor="Data", **fields)
                     else:
                         #for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb', 'others'], [_l, _c, _b, _cc, _bb, _others]):
                         for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb'], [_l, _c, _b, _cc, _bb]):
                             sfatjets_flavor = sfatjets[mask]
-                            sweight_fatjets_flavor = flatten(sweight_fatjets[mask])
                             fields = {k: flatten(sfatjets_flavor[k]) for k in h.fields if k in dir(sfatjets_flavor)}
                             #fields.update({k: flatten(sfatjets_flavor[k]) for k in h.fields if k.split('fatjet_')[-1] in ['pt', 'eta', 'phi', 'msoftdrop']})
-                            h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
+                            h.fill(dataset=dataset, flavor=flav, **fields, weight=weights.weight()[event_level][fatjet_mutag_level][mask])
 
                 elif (((histname in self.event_hists) | ('hist2d_nsv' in histname) | ('hist2d_nmusj' in histname)) & (not histname in ['njet', 'nbjet', 'nel', 'nmu'])):
                     fields = {k: flatten(sfatjets[k]) for k in h.fields if k in dir(sfatjets)}
                     for varname, values in zip(['nfatjet', 'nsv1', 'nsv2', 'nmusj1', 'nmusj2'], [nfatjet, nsv1, nsv2, nmusj1, nmusj2]):
                         if varname in histname:
                             fields.update({varname: flatten(values)})
-                    #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=sweight_fatjets)
+                    #h.fill(dataset=dataset, flavor="inclusive", **fields, weight=weights.weight()[event_level][fatjet_mutag_level][mask])
                     if isRealData:
                         h.fill(dataset=dataset, flavor="Data", **fields)
                     else:
                         for flav, mask in zip(['light', 'c', 'b', 'cc', 'bb'], [_l, _c, _b, _cc, _bb]):
                             sfatjets_flavor = sfatjets[mask]
-                            sweight_fatjets_flavor = flatten(sweight_fatjets[mask])
                             fields = {k: flatten(sfatjets_flavor[k]) for k in h.fields if k in dir(sfatjets_flavor)}
                             for varname, values in zip(['nfatjet', 'nsv1', 'nsv2', 'nmusj1', 'nmusj2'], [nfatjet, nsv1, nsv2, nmusj1, nmusj2]):
                                 if varname in histname:
                                     fields.update({varname: flatten(values[mask])})
-                            h.fill(dataset=dataset, flavor=flav, **fields, weight=sweight_fatjets_flavor)
+                            h.fill(dataset=dataset, flavor=flav, **fields) #, weight=weights.weight()[event_level][fatjet_mutag_level][mask])
                 else: continue
 
         #output['njet'].fill(dataset=dataset,    njet=ak.num(sjets))
