@@ -4,6 +4,8 @@ import json
 import argparse
 import time
 import gc
+import tarfile
+import tempfile
 
 import numpy as np
 
@@ -124,13 +126,29 @@ if __name__ == '__main__':
 				os.system(f'rm {fi}')
 		sys.exit(0)
 
+        ##### Untar JECs
+        ##### Correction files in https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECDataMC
+	jesInputFilePath = tempfile.mkdtemp()
+	if args.year==2017:
+		jecTarFiles = [
+                    '/correction_files/JEC/Fall17_17Nov2017B_V32_DATA.tar.gz',
+                    '/correction_files/JEC/Fall17_17Nov2017C_V32_DATA.tar.gz',
+                    '/correction_files/JEC/Fall17_17Nov2017DE_V32_DATA.tar.gz',
+                    '/correction_files/JEC/Fall17_17Nov2017F_V32_DATA.tar.gz',
+                    '/correction_files/JEC/Fall17_17Nov2017_V32_MC.tar.gz',
+                    ]
+	for itar in jecTarFiles:
+                jecFile = os.getcwd()+itar
+                jesArchive = tarfile.open( jecFile, "r:gz")
+                jesArchive.extractall(jesInputFilePath)
+
 	# load workflow
 	if args.workflow == "ttcom":
 		from workflows.ttbar_validation import NanoProcessor
 		processor_instance = NanoProcessor()
 	elif args.workflow == "fattag":
 		from workflows.fatjet_tagger import NanoProcessor
-		processor_instance = NanoProcessor(year=args.year)
+		processor_instance = NanoProcessor(year=args.year, JECfolder=jesInputFilePath)
 	else:
 		raise NotImplemented
 

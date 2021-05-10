@@ -33,6 +33,19 @@ xsecs = {
     "GluGluHToCC_M-125_13TeV"  : 27.8,
 }
 
+JECversions = {
+        '2017' : {
+            'MC' : 'Fall17_17Nov2017_V32_MC',
+            'Data' : {
+                'B' : 'Fall17_17Nov2017B_V32_DATA',
+                'C' : 'Fall17_17Nov2017C_V32_DATA',
+                'D' : 'Fall17_17Nov2017DE_V32_DATA',
+                'E' : 'Fall17_17Nov2017DE_V32_DATA',
+                'F' : 'Fall17_17Nov2017F_V32_DATA'
+                }
+            }
+        }
+
 histogram_settings = {
     'variables' : {
         'fatjet_pt'    : {'binning' : {'n_or_arr' : 40,  'lo' : 0,      'hi' : 2000},  'xlim' : {'xmin' : 0,      'xmax' : 2000}},
