@@ -57,3 +57,14 @@ Run the example on a Condor cluster:
 ```
 python runner.py --workflow fattag --executor parsl/condor --samples datasets_local_fixed.json --output hists_fattag.coffea -s 10
 ```
+# Apply corrections 
+
+## Pileup reweighting
+To apply pileup reweighting in your MC samples, one need to create first the pileup profile of the MC sample. This can be done with the script `createNTrueForPU.py`. This will take some of the files from your dataset and create a coffea file with that profile. To run it:
+```
+python createNTrueForPU.py --samples datasets/datasets_btag2017.json --year 2017 
+```
+The output will be stored in the `correction_files` folder with the name like: `nTrueInt_datasets_btag2017_2017.coffea`. In addition, you need to properly set the `self.puFile` and `self.nTrueFile` in your workflow file.
+
+## Jet energy corrections
+You need to download the tar files needed for the JECs from [this twiki](https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECdataMC), in the `correction_files/JEC` folder and properly set these names in the `jecTarFiles` of `runner.py` and in `JECversions` of the `utils.py` script.

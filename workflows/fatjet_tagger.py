@@ -188,10 +188,6 @@ class NanoProcessor(processor.ProcessorABC):
         jec_stack_names = [ JECversion+'_'+k+'_'+typeJet for k in JECtypes ]
         JECtypesfiles = [ '* * '+self.corrJECfolder+'/'+k+'.txt' for k in jec_stack_names ]
         ext.add_weight_sets( JECtypesfiles )
-        #        [
-        #    "* * "+self.corrJECfolder+"/Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi.txt",
-        #    "* * "+self.corrJECfolder+"/Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi.txt",
-        #])
         ext.finalize()
         evaluator = ext.make_evaluator()
 
@@ -199,18 +195,13 @@ class NanoProcessor(processor.ProcessorABC):
         for key in evaluator.keys():
             print("\t", key)
 
-        #print()
-        #print("Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi:")
-        #print(evaluator['Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi'])
-
-        #jec_stack_names = ["Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi",
-        #           "Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi"]
-
         jec_inputs = {name: evaluator[name] for name in jec_stack_names}
-        jec_stack = JECStack(jec_inputs)
+        corrector = FactorizedJetCorrector( **jec_inputs )
+        for i in jec_inputs: print(i,'\n',evaluator[i])
 
         print(dir(evaluator))
         print()
+        jec_stack = JECStack(jec_inputs)
         name_map = jec_stack.blank_name_map
         name_map['JetPt'] = 'pt'
         name_map['JetMass'] = 'mass'
@@ -227,10 +218,6 @@ class NanoProcessor(processor.ProcessorABC):
             jets['pt_gen'] = ak.values_astype(ak.fill_none(jets.matched_gen.pt, 0), np.float32)
             name_map['ptGenJet'] = 'pt_gen'
 
-        #corrector = FactorizedJetCorrector(
-        #    Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi=evaluator['Fall17_17Nov2017_V32_MC_L2Relative_AK8PFPuppi'],
-        #    Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi=evaluator['Fall17_17Nov2017_V32_MC_L3Absolute_AK8PFPuppi'],
-        #)
 
         jet_factory = CorrectedJetsFactory(name_map, jec_stack)
         corrected_jets = jet_factory.build(jets, lazy_cache=events_cache)
