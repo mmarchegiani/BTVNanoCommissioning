@@ -16,24 +16,24 @@ class NanoProcessor(processor.ProcessorABC):
         self.year = year
         self._mask_fatjets = {
             'basic'       : {
-                'pt_cut' : 250,
+                'pt_cut' : 250.,
                 'eta_cut': 2.4,
                 'jetId_cut': 3 if self.year==2016 else 2,
-                'mass_cut' : 20,
+                'mass_cut' : 20.,
                 'tau21_cut' : 1.1
                     },
             'pt350msd50'       : {
-                'pt_cut' : 350,
+                'pt_cut' : 350.,
                 'eta_cut': 2.4,
                 'jetId_cut': 3 if self.year==2016 else 2,
-                'mass_cut' : 50,
+                'mass_cut' : 50.,
                 'tau21_cut' : 1.1
                     },
             'msd100tau06'       : {
-                'pt_cut' : 350,
+                'pt_cut' : 350.,
                 'eta_cut': 2.4,
                 'jetId_cut': 3 if self.year==2016 else 2,
-                'mass_cut' : 100,
+                'mass_cut' : 100.,
                 'tau21_cut' : 0.6
                     },
         }
@@ -295,7 +295,8 @@ class NanoProcessor(processor.ProcessorABC):
         trig_arrs = [events.HLT[_trig.strip("HLT_")] for _trig in self.triggers]
         if isRealData:
             req_trig = np.zeros(len(events), dtype='bool')
-            for t in trig_arrs: req_trig = req_trig | t
+            for t in trig_arrs:
+                req_trig = req_trig | t
         else:
             req_trig = np.ones(len(events), dtype='bool')
         cuts.add('trigger', ak.to_numpy(req_trig))
@@ -312,7 +313,7 @@ class NanoProcessor(processor.ProcessorABC):
         #req_jets = (ak.count(events.Jet.pt, axis=1) >= 2)
 
         ## FatJet cuts
-        events.FatJet = events.FatJet[(events.FatJet.pt > self._mask_fatjets['basic']['pt_cut']) & (abs(events.FatJet.eta) <= self._mask_fatjets['basic']['pt_cut']) & (events.FatJet.jetId > self._mask_fatjets['basic']['jetId_cut'])  & (ak.count(events.FatJet.subjets.pt, axis=2) >= 2) ]  ## subjet sel to crosscheck
+        events.FatJet = events.FatJet[(events.FatJet.pt > self._mask_fatjets['basic']['pt_cut']) & (abs(events.FatJet.eta) <= self._mask_fatjets['basic']['eta_cut']) & (events.FatJet.jetId > self._mask_fatjets['basic']['jetId_cut'])  & (ak.count(events.FatJet.subjets.pt, axis=2) >= 2) ]  ## subjet sel to crosscheck
 
         ## Event level variables
         eventVariables = {}
@@ -358,20 +359,20 @@ class NanoProcessor(processor.ProcessorABC):
 
         selection = {}
         selection['basic'] = { 'trigger', 'basic' }
-        selection['pt350msd50'] = { 'trigger', 'basic', 'pt350msd50' }
-        selection['msd100tau06'] = { 'trigger', 'basic', 'pt350msd50', 'msd100tau06' }  ## not really needed basic and pt350msd50
+        selection['pt350msd50'] = { 'trigger', 'fatjet_mutag', 'pt350msd50' }
+        selection['msd100tau06'] = { 'trigger', 'fatjet_mutag', 'msd100tau06' }
 
         for histname, h in output.items():
             sel = [ r for r in selection.keys() if r in histname.split('_') ]
             if ((histname in self.fatjet_hists) | ('hist2d_fatjet' in histname)):
                 for flav, mask in flavors.items():
                     weight = weights.weight() * cuts.all(*selection[sel[0]]) * ak.to_numpy(mask)
-                    fields = {k: ak.to_numpy(leadfatjet[k]) for k in h.fields if k in dir(leadfatjet)}
+                    fields = {k: ak.fill_none(leadfatjet[k], -9999) for k in h.fields if k in dir(leadfatjet)}
                     h.fill(dataset=dataset, flavor=flav, **fields, weight=weight)
             if histname in self.event_hists:
                 for flav, mask in flavors.items():
                     weight = weights.weight() * cuts.all(*selection[sel[0]]) * ak.to_numpy(mask)
-                    fields = {k: ak.to_numpy(eventVariables[k]) for k in h.fields if k in eventVariables.keys() }
+                    fields = {k: ak.fill_none(eventVariables[k], -9999) for k in h.fields if k in eventVariables.keys() }
                     h.fill(dataset=dataset, flavor=flav, **fields, weight=weight)
 
         return output

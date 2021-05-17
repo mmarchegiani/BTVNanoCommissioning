@@ -371,9 +371,9 @@ if __name__ == '__main__':
 
 	if not args.splitdataset:
 		if args.offset == parser.get_default("offset"):
-			if len(sample_dict.keys()) > 1:
-				output = rescale(output, xsecs, lumi[args.year])
-				#output = rescale(output, xsecs, lumi[args.year], "JetHT")
+			#if len(sample_dict.keys()) > 1:     ##################### needs fix.
+			#	output = rescale(output, xsecs, lumi[args.year])
+			#	#output = rescale(output, xsecs, lumi[args.year], "JetHT")
 			save(output, hist_dir + args.output)
 			print(output)
 			print(f"Saving output to {hist_dir + args.output}")
