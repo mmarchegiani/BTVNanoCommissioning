@@ -4,7 +4,9 @@ stages:
 
 voms_proxy:
     stage: proxy
-    image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cc7-cvmfs
+    #image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cc7-cvmfs
+    tags:
+        - cvmfs
     script:
         - mkdir -p ${HOME}/.globus
         - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
