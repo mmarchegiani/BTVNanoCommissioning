@@ -4,7 +4,7 @@ stages:
 
 voms_proxy:
     stage: proxy
-    image: gitlab-registry.cern.ch/clange/grid-proxy-test
+    image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
     artifacts:
         paths:
             - proxy
