@@ -7,7 +7,6 @@ voms_proxy:
     image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cc7-cvmfs
     script:
         - mkdir -p ${HOME}/.globus
-        - cat "${GRID_USERCERT}"
         - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
         - printf "${GRID_USERKEY}" | base64 -d > ${HOME}/.globus/userkey.pem
         - chmod 400 ${HOME}/.globus/userkey.pem
