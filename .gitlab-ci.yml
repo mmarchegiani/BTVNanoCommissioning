@@ -4,9 +4,10 @@ stages:
 
 voms_proxy:
     stage: proxy
-    #image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cc7-cvmfs
-    tags:
-        - cvmfs
+    image: gitlab-registry.cern.ch/clange/grid-proxy-test
+    artifacts:
+        paths:
+            - proxy
     script:
         - mkdir -p ${HOME}/.globus
         - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
@@ -14,6 +15,9 @@ voms_proxy:
         - chmod 400 ${HOME}/.globus/userkey.pem
         - printf "${GRID_PASSWORD}" | base64 -d | voms-proxy-init --voms cms --pwstdin
         - voms-proxy-info --all
+        - export VOMSPROXY=$(voms-proxy-info -path)
+        - mkdir proxy
+        - cp ${VOMSPROXY} proxy/x509_proxy
 
 runcode:
     dependencies:
@@ -21,6 +25,7 @@ runcode:
     stage: run
     image: coffeateam/coffea-base:latest
     script:
+        - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - python runner.py --workflow fattag --executor futures --samples datasets/datasets_btag2017.json --output hists_fattag_flavor_mutag_2017.coffea7 --year 2017 --workers 10 --limit 2 --only QCD_Pt-800to1000_MuEnrichedPt5_TuneCP5_13TeV_pythia8
 
 
