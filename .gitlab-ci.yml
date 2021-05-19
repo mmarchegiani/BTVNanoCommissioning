@@ -12,7 +12,6 @@ voms_proxy:
         - chmod 400 ${HOME}/.globus/userkey.pem
         - printf "${GRID_PASSWORD}" | base64 -d | voms-proxy-init --voms cms --pwstdin
         - voms-proxy-info --all
-        - voms-proxy-destroy
 
 runcode:
     dependencies:
