@@ -10,6 +10,8 @@ voms_proxy:
         - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
         - printf "${GRID_USERKEY}" | base64 -d > ${HOME}/.globus/userkey.pem
         - chmod 400 ${HOME}/.globus/userkey.pem
+        - ls ${HOME}/.globus
+          ls /home/cmsusr/.globus/
         - printf "${GRID_PASSWORD}" | base64 -d | voms-proxy-init --voms cms --pwstdin
         - voms-proxy-info --all
         - voms-proxy-destroy
