@@ -29,6 +29,9 @@ runcode:
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - python runner.py --workflow fattag --executor futures --samples datasets/datasets_btag2017.json --output hists_fattag_flavor_mutag_2017.coffea7 --year 2017 --workers 10 --limit 2 --only QCD_Pt-800to1000_MuEnrichedPt5_TuneCP5_13TeV_pythia8
+    artifacts:
+        paths:
+            - histograms 
 
 
 
