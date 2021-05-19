@@ -4,6 +4,7 @@ stages:
 
 voms_proxy:
     stage: proxy
+    image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cmssw_10_6_14-slc7_amd64_gcc820:latest
     script:
         - mkdir -p ${HOME}/.globus
         - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
