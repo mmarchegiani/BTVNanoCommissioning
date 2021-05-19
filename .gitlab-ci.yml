@@ -23,6 +23,8 @@ runcode:
     dependencies:
         - voms_proxy
     stage: run
+    tags:
+        - cvmfs
     image: coffeateam/coffea-base:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
