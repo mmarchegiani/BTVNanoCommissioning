@@ -1,0 +1,107 @@
+stages:
+    - run
+
+
+runcode:
+    stage: run
+    image: coffeateam/coffea-base:latest
+    script:
+        - python runner.py --workflow fattag --executor futures --samples datasets/datasets_btag2017.json --output hists_fattag_flavor_mutag_2017.coffea7 --year 2017 --workers 10 --limit 2 --only QCD_Pt-800to1000_MuEnrichedPt5_TuneCP5_13TeV_pythia8
+
+
+
+
+
+#stages:
+#    - build
+#    - nanoAOD 
+#    - skim
+#
+#variables:
+#    NUMEVENTS: "100000"
+#
+#
+#build_cmssw:
+#    stage: build
+#    variables:
+#        TO: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+#        CMSSW_RELEASE: /home/cmsusr/CMSSW_5_3_32/src/
+#    tags:
+#        - docker-image-build
+#    script:
+#        - ignore
+#
+#.runNano:
+#    stage: nanoAOD
+#    dependencies:
+#        - build_cmssw
+#    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+#    #image: gitlab-registry.cern.ch/algomez/cms-open-data:latest
+#    before_script:
+#        - export CIHOME="$( pwd )"
+#
+#runNanoSimulation:
+#    extends: .runNano
+#    variables:
+#        simFile: 'Analyzer/AOD2NanoAOD/data/CMS_MonteCarlo2012_Summer12_DR53X_DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball_AODSIM_PU_RD1_START53_V7N-v1_20000_01.txt'
+#    script:
+#        - cd /home/cmsusr/CMSSW_5_3_32/src/
+#        - cmsRun Analyzer/AOD2NanoAOD/configs/general_cfg.py maxEvents=${NUMEVENTS} txtFile=${simFile} outputFile=output_simulation.root isData=False
+#        - cp output_simulation_numEvent${NUMEVENTS}.root ${CIHOME}/output_simulation.root
+#        - ls ${CIHOME}
+#    artifacts:
+#        paths: 
+#            - output_simulation.root
+#        expire_in: 1 week
+#
+#runNanoData:
+#    extends: .runNano
+#    variables:
+#        dataFile: 'Analyzer/AOD2NanoAOD/data/CMS_Run2012B_DoubleMuParked_AOD_22Jan2013-v1_10000_01.txt'
+#    script:
+#        - cd /home/cmsusr/CMSSW_5_3_32/src/
+#        - cmsRun Analyzer/AOD2NanoAOD/configs/general_cfg.py maxEvents=-1 txtFile=${dataFile} outputFile=output_data.root isData=True
+#        - cp output_data.root ${CIHOME}/
+#        - ls ${CIHOME}
+#    artifacts:
+#        paths: 
+#            - output_data.root
+#        expire_in: 1 week
+#
+#     
+#.pandasSkim:
+#    stage: skim
+#    image: gitlab-registry.cern.ch/algomez/cms-open-data/rootpython:latest
+#
+#pandasSkimSimulation:
+#    extends: .pandasSkim
+#    dependencies:
+#        - runNanoSimulation
+#    variables:
+#        inputFile: "output_simulation.root"
+#    script:
+#        - pwd -LP
+#        - ls 
+#        - python Analyzer/rootToPandas.py --inputFile=${PWD}/${inputFile}
+#    artifacts:
+#        paths:
+#            - nMuonscheck_output_simulation.png
+#            - output_simulation.pkl
+#            - output_simulation.csv
+#        expire_in: 1 week
+#
+#pandasSkimData:
+#    extends: .pandasSkim
+#    dependencies:
+#        - runNanoData
+#    variables:
+#        inputFile: "output_data.root"
+#    script:
+#        - ls 
+#        - python Analyzer/rootToPandas.py --inputFile=${PWD}/${inputFile}
+#    artifacts:
+#        paths:
+#            - nMuonscheck_output_data.png
+#            - output_data.pkl
+#            - output_data.csv
+#        expire_in: 1 week
