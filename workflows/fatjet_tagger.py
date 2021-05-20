@@ -132,7 +132,7 @@ class NanoProcessor(processor.ProcessorABC):
             self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2016.coffea'
         if self.year == 2017:
             self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'
-            self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2017.coffea'
+            self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_local_fixed_btag2017_2017.coffea'
         if self.year == 2018:
             self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions18/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'
             self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2018.coffea'
