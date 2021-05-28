@@ -3,6 +3,11 @@ stages:
     - createPUfile
     - run
 
+variables:
+    inputFile : datasets/datasets_btag2017.json
+    coffeaFile : hists_fattag_flavor_mutag_2017.coffea7
+    year: 2017
+
 voms_proxy:
     stage: proxy
     image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
@@ -29,7 +34,7 @@ runPU:
     image: coffeateam/coffea-base:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
-        - python createNTrueForPU.py --samples datasets/datasets_btag2017.json --year 2017 
+        - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" 
     artifacts:
         paths:
             - correction_files
@@ -44,7 +49,7 @@ runcode:
     image: coffeateam/coffea-base:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
-        - python runner.py --workflow fattag --executor futures --samples datasets/datasets_btag2017.json --output hists_fattag_flavor_mutag_2017.coffea7 --year 2017 --limit 2 
+        - python runner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 
     artifacts:
         paths:
             - histograms 
