@@ -55,9 +55,9 @@ runcode:
         paths:
             - histograms 
 
-makeplots:
+runplots:
     dependencies:
-        - runCode
+        - runcode
     stage: makePlots
     image: coffeateam/coffea-base:latest
     script:
