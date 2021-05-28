@@ -1,5 +1,6 @@
 stages:
     - proxy
+    - createPUfile
     - run
 
 voms_proxy:
@@ -19,9 +20,24 @@ voms_proxy:
         - mkdir proxy
         - cp ${VOMSPROXY} proxy/x509_proxy
 
+runPU:
+    dependencies:
+        - voms_proxy
+    stage: createPUfile
+    tags:
+        - cvmfs
+    image: coffeateam/coffea-base:latest
+    script:
+        - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
+        - python createNTrueForPU.py --samples datasets/datasets_btag2017.json --year 2017 
+    artifacts:
+        paths:
+            - correction_files
+
 runcode:
     dependencies:
         - voms_proxy
+        - runPU
     stage: run
     tags:
         - cvmfs
