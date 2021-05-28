@@ -68,6 +68,6 @@ if __name__ == '__main__':
 
         for array in uproot.iterate([filesToProcess], ['Pileup_nTrueInt']):
             puHisto.fill(dataset=isample, x=array['Pileup_nTrueInt'])
-    save( puHisto, os.getcwd()+'/correction_files/nTrueInt_'+args.samplejson.split('.json')[0]+'_'+str(args.year)+'.coffea' )
+    save( puHisto, os.getcwd()+'/correction_files/nTrueInt_'+args.samplejson.split('/')[-1].split('.json')[0]+'_'+str(args.year)+'.coffea' )
 
 
