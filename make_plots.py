@@ -231,18 +231,18 @@ for histname in accumulator:
                 #histo_QCD_bb = h[dataset].sum('dataset')['bb']
                 #histo_QCD_cc = h[dataset].sum('dataset')['cc']
                 histo_QCD = h[dataset]
-                histo_QCD_bb = h[(dataset, 'bb')]
-                histo_QCD_cc = h[(dataset, 'cc')]
+                histo_QCD_bb = h[(dataset, '_bb')]
+                histo_QCD_cc = h[(dataset, '_cc')]
             if 'GluGluHToBB' in dataset:
                 #histo_BB    = h[dataset].sum('dataset')
                 #histo_BB_bb = h[dataset].sum('dataset')['bb']
                 histo_BB    = h[dataset]
-                histo_BB_bb = h[(dataset, 'bb')]
+                histo_BB_bb = h[(dataset, '_bb')]
             if 'GluGluHToCC' in dataset:
                 #histo_CC    = h[dataset].sum('dataset')
                 #histo_CC_cc = h[dataset].sum('dataset')['cc']
                 histo_CC    = h[dataset]
-                histo_CC_cc = h[(dataset, 'cc')]
+                histo_CC_cc = h[(dataset, '_cc')]
         xaxis = [axis.name for axis in histo_QCD.axes() if 'btag' in axis.name][0]
 
         for histo_GluGlu, dataset_GluGlu in zip([histo_BB, histo_CC], ['GluGluHToBB', 'GluGluHToCC']):
@@ -347,7 +347,7 @@ for histname in accumulator:
 
         for flavor in flavors:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24,9))
-            plot.plot2d(h.sum('dataset')['light'].sum('flavor'), xaxis=xaxis, ax=ax1)
+            plot.plot2d(h.sum('dataset')['_l'].sum('flavor'), xaxis=xaxis, ax=ax1)
             plot.plot2d(h.sum('dataset')[flavor].sum('flavor'), xaxis=xaxis, ax=ax2)
             hep.cms.text("Preliminary", ax=ax1)
             hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax1)
