@@ -108,29 +108,30 @@ for histname in accumulator:
     if (not 'fatjet' in histname) & (not 'nmusj' in histname) & (not 'nsv' in histname): continue
     print("Plotting", histname)
     #fig, ax = plt.subplots(1, 1, figsize=(12, 9))
-    
+
     if any([histname.startswith('cutflow')]): break
     h = accumulator[histname]
     if histname in histogram_settings['variables'].keys():
         varname = h.fields[-1]
         varlabel = h.axis(varname).label
         h = h.rebin(varname, hist.Bin(varname, varlabel, **histogram_settings['variables'][histname]['binning']))
-    datasets = [str(s) for s in h.axis('dataset').identifiers() if str(s) is not 'dataset']
+    datasets = [str(s) for s in h.axis('dataset').identifiers() if str(s) != 'dataset']
     mapping = {
         r'QCD ($\mu$ enriched)' : [dataset for dataset in datasets if 'QCD_Pt' in dataset],
-        args.data : [args.data],
+        r'BTagMu': [ idata for idata in datasets if args.data in idata ],
     }
     for dataset in datasets:
         if 'QCD' in dataset: continue
         if args.data in dataset: continue
         mapping[dataset] = [dataset]
     datasets = mapping.keys()
-    #datasets_mc  = [dataset for dataset in datasets if args.data not in dataset]
+    datasets_data  = [dataset for dataset in datasets if args.data in dataset]
     datasets_QCD = [dataset for dataset in datasets if ((args.data not in dataset) & ('GluGlu' not in dataset))]
     datasets_ggH = [dataset for dataset in datasets if 'GluGlu' in dataset]
 
     h = h.group("dataset", hist.Cat("dataset", "Dataset"), mapping)
-    flavors = ['bb', 'cc', 'b', 'c', 'light']
+    flavors = ['_bb', '_cc', '_b', '_c', '_l']
+    #flavors = ['bb', 'cc', 'b', 'c', 'light']
     #flavors = ['bb', 'cc', 'b', 'c', 'light', 'others']
     if hist1d:
         if args.hist2d: continue
