@@ -17,7 +17,9 @@ parser.add_argument('-s', '--scale', type=str, default='linear', help='Plot y-ax
 parser.add_argument('-d', '--dense', action='store_true', help='Normalized plots')
 parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
 parser.add_argument('--hist2d', action='store_true', help='Plot only 2D histograms')
+parser.add_argument('--test', action='store_true', default=False, help='Test with lower stats.')
 parser.add_argument('--data', type=str, default='BTagMu', help='Data sample name')
+parser.add_argument('--selection', type=str, default='all', help='Plot only plots with this selection. ("all" to plot all the selections in file)')
 
 args = parser.parse_args()
 
@@ -96,41 +98,45 @@ selection_msd100tau06 = (r"$\geq$1 AK8 jets"+"\n"+
                   r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n")
 """
 
+totalLumi = 'TEST' if args.test else lumi[args.year]
+
 plt.style.use([hep.style.ROOT, {'font.size': 16}])
 plot_dir = "plots/" + args.output + "/"
 if not os.path.exists(plot_dir):
     os.makedirs(plot_dir)
 
 for histname in accumulator:
+    if not args.selection.startswith('all') and not ( args.selection in histname  ): continue
     hist1d = not 'hist2d' in histname
     if histname in ["sumw", "nbtagmu", "nbtagmu_event_level", "nfatjet"]: continue
     #if (not 'fatjet' in histname) & (not histname in ['nmusj1', 'nmusj2', 'nsv1', 'nsv2']): continue
-    if (not 'fatjet' in histname) & (not 'nmusj' in histname) & (not 'nsv' in histname): continue
+    #if (not 'fatjet' in histname) & (not 'nmusj' in histname) & (not 'nsv' in histname): continue
     print("Plotting", histname)
     #fig, ax = plt.subplots(1, 1, figsize=(12, 9))
-    
+
     if any([histname.startswith('cutflow')]): break
     h = accumulator[histname]
     if histname in histogram_settings['variables'].keys():
         varname = h.fields[-1]
         varlabel = h.axis(varname).label
         h = h.rebin(varname, hist.Bin(varname, varlabel, **histogram_settings['variables'][histname]['binning']))
-    datasets = [str(s) for s in h.axis('dataset').identifiers() if str(s) is not 'dataset']
+    datasets = [str(s) for s in h.axis('dataset').identifiers() if str(s) != 'dataset']
     mapping = {
         r'QCD ($\mu$ enriched)' : [dataset for dataset in datasets if 'QCD_Pt' in dataset],
-        args.data : [args.data],
+        r'BTagMu': [ idata for idata in datasets if args.data in idata ],
     }
     for dataset in datasets:
         if 'QCD' in dataset: continue
         if args.data in dataset: continue
         mapping[dataset] = [dataset]
     datasets = mapping.keys()
-    #datasets_mc  = [dataset for dataset in datasets if args.data not in dataset]
+    datasets_data  = [dataset for dataset in datasets if args.data in dataset]
     datasets_QCD = [dataset for dataset in datasets if ((args.data not in dataset) & ('GluGlu' not in dataset))]
     datasets_ggH = [dataset for dataset in datasets if 'GluGlu' in dataset]
 
     h = h.group("dataset", hist.Cat("dataset", "Dataset"), mapping)
-    flavors = ['bb', 'cc', 'b', 'c', 'light']
+    flavors = ['_bb', '_cc', '_b', '_c', '_l']
+    #flavors = ['bb', 'cc', 'b', 'c', 'light']
     #flavors = ['bb', 'cc', 'b', 'c', 'light', 'others']
     if hist1d:
         if args.hist2d: continue
@@ -152,7 +158,7 @@ for histname in accumulator:
                 if "CC" in label:
                     labels[i] = r"ggH$\rightarrow$cc $\times$" + str(scale_ggH)
         hep.cms.text("Preliminary", ax=ax)
-        hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
+        hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
         ax.legend(handles, labels)
         ax.set_yscale(args.scale)
         rax.set_ylabel('Data/MC')
@@ -193,7 +199,7 @@ for histname in accumulator:
         plot.plotratio(num=h[args.data].sum('dataset', 'flavor'), denom=h[(datasets_QCD, flavors)].sum('dataset', 'flavor'), ax=rax,
                        error_opts=data_err_opts, denom_fill_opts={}, guide_opts={}, unc='num')
         hep.cms.text("Preliminary", ax=ax)
-        hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
+        hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
         ax.set_yscale(args.scale)
         #print(list(h[args.data].sum('dataset', 'flavor').values().values()))
         #ax.set_ylim(0.001,1.05*max(np.array(h[args.data].sum('dataset', 'flavor').values().values())))
@@ -230,18 +236,18 @@ for histname in accumulator:
                 #histo_QCD_bb = h[dataset].sum('dataset')['bb']
                 #histo_QCD_cc = h[dataset].sum('dataset')['cc']
                 histo_QCD = h[dataset]
-                histo_QCD_bb = h[(dataset, 'bb')]
-                histo_QCD_cc = h[(dataset, 'cc')]
+                histo_QCD_bb = h[(dataset, '_bb')]
+                histo_QCD_cc = h[(dataset, '_cc')]
             if 'GluGluHToBB' in dataset:
                 #histo_BB    = h[dataset].sum('dataset')
                 #histo_BB_bb = h[dataset].sum('dataset')['bb']
                 histo_BB    = h[dataset]
-                histo_BB_bb = h[(dataset, 'bb')]
+                histo_BB_bb = h[(dataset, '_bb')]
             if 'GluGluHToCC' in dataset:
                 #histo_CC    = h[dataset].sum('dataset')
                 #histo_CC_cc = h[dataset].sum('dataset')['cc']
                 histo_CC    = h[dataset]
-                histo_CC_cc = h[(dataset, 'cc')]
+                histo_CC_cc = h[(dataset, '_cc')]
         xaxis = [axis.name for axis in histo_QCD.axes() if 'btag' in axis.name][0]
 
         for histo_GluGlu, dataset_GluGlu in zip([histo_BB, histo_CC], ['GluGluHToBB', 'GluGluHToCC']):
@@ -249,9 +255,9 @@ for histname in accumulator:
             plot.plot2d(histo_QCD.sum('dataset', 'flavor'), xaxis=xaxis, ax=ax1)
             plot.plot2d(histo_GluGlu.sum('dataset', 'flavor'), xaxis=xaxis, ax=ax2)
             hep.cms.text("Preliminary", ax=ax1)
-            hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax1)
+            hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax1)
             hep.cms.text("Preliminary", ax=ax2)
-            hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax2)
+            hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax2)
             ax1.set_title('QCD')
             ax2.set_title(dataset_GluGlu)
             filepath = plot_dir + histname + "_" + dataset_GluGlu + ".png"
@@ -270,9 +276,9 @@ for histname in accumulator:
             plot.plot2d(histo_QCD_xx.sum('dataset', 'flavor'), xaxis=xaxis, ax=ax1)
             plot.plot2d(histo_GluGlu_xx.sum('dataset', 'flavor'), xaxis=xaxis, ax=ax2)
             hep.cms.text("Preliminary", ax=ax1)
-            hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax1)
+            hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax1)
             hep.cms.text("Preliminary", ax=ax2)
-            hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax2)
+            hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax2)
             ax1.set_title(qcd_label)
             ax2.set_title(dataset_GluGlu_xx)
             filepath = plot_dir + histname + "_" + '_'.join(dataset_GluGlu_xx.strip(')').split(' (')) + ".png"
@@ -289,7 +295,7 @@ for histname in accumulator:
                 ggHbb_rescaled.scale(scale_ggH)
                 plot.plot1d(ggHbb_rescaled, ax=ax, legend_opts={'loc':1}, density=args.dense, fill_opts=ggHbb_opts, stack=False, clear=False)
                 hep.cms.text("Preliminary", ax=ax)
-                hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
+                hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
                 ax.set_yscale(args.scale)
                 if (not args.dense) & (args.scale == "log"):
                     ax.set_ylim(0.1, 10**7)
@@ -319,7 +325,7 @@ for histname in accumulator:
                 ggHbb_rescaled.scale(scale_ggH)
                 plot.plot1d(ggHcc_rescaled, ax=ax, legend_opts={'loc':1}, density=args.dense, fill_opts=ggHcc_opts, stack=False, clear=False)
                 hep.cms.text("Preliminary", ax=ax)
-                hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
+                hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
                 ax.set_yscale(args.scale)
                 if (not args.dense) & (args.scale == "log"):
                     ax.set_ylim(0.1, 10**7)
@@ -346,12 +352,12 @@ for histname in accumulator:
 
         for flavor in flavors:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24,9))
-            plot.plot2d(h.sum('dataset')['light'].sum('flavor'), xaxis=xaxis, ax=ax1)
+            plot.plot2d(h.sum('dataset')['_l'].sum('flavor'), xaxis=xaxis, ax=ax1)
             plot.plot2d(h.sum('dataset')[flavor].sum('flavor'), xaxis=xaxis, ax=ax2)
             hep.cms.text("Preliminary", ax=ax1)
-            hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax1)
+            hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax1)
             hep.cms.text("Preliminary", ax=ax2)
-            hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax2)
+            hep.cms.lumitext(text=f'{totalLumi}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax2)
             ax1.set_title('light')
             ax2.set_title(flavor)
             filepath = plot_dir + histname + "_" + flavor + ".png"
