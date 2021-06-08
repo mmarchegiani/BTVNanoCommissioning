@@ -12,7 +12,7 @@ from utils import rescale, get_nsv, lumi, xsecs, JECversions
 
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
-    def __init__(self, year=2017, JECfolder='correction_files'):
+    def __init__(self, year=2017, JECfolder='correction_files', nTrueFile=''):
         self.year = year
         self._mask_fatjets = {
             'basic'       : {
@@ -52,6 +52,7 @@ class NanoProcessor(processor.ProcessorABC):
         if self.year == 2018:
             self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions18/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'
             self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2018.coffea'
+        if nTrueFile: self.nTrueFile = nTrueFile
 
         ##############
         # Trigger level

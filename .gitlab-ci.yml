@@ -35,10 +35,12 @@ runPU:
     image: coffeateam/coffea-base:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
-        - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" 
+        - mkdir test
+        - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" --outputDir test --outputName testFile.coffea
     artifacts:
         paths:
-            - correction_files
+            - test
+            #            - correction_files
 
 runcode:
     dependencies:
@@ -50,7 +52,7 @@ runcode:
     image: coffeateam/coffea-base:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
-        - python runner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 
+        - python runner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
     artifacts:
         paths:
             - histograms 

@@ -23,6 +23,8 @@ if __name__ == '__main__':
     parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
     parser.add_argument('--only', type=str, default=None, help='Only process specific dataset or file')
     parser.add_argument('--dataset', type=str, default=None, help='Dataset in the JSON file to process')
+    parser.add_argument('--outputDir', type=str, default=None, help='Output directory')
+    parser.add_argument('--outputName', type=str, default=None, help='Output directory')
 
     try: args = parser.parse_args()
     except:
@@ -68,6 +70,9 @@ if __name__ == '__main__':
 
         for array in uproot.iterate([filesToProcess], ['Pileup_nTrueInt']):
             puHisto.fill(dataset=isample, x=array['Pileup_nTrueInt'])
-    save( puHisto, os.getcwd()+'/correction_files/nTrueInt_'+args.samplejson.split('/')[-1].split('.json')[0]+'_'+str(args.year)+'.coffea' )
+
+    outFolder = os.getcwd()+'/correction_files/' if args.outputDir is None else args.outputDir
+    outName = outFolder+( outFolder+'/'+args.outputName if args.outputName else outFolder+'/nTrueInt_'+args.samplejson.split('/')[-1].split('.json')[0]+'_'+str(args.year)+'.coffea' )
+    save( puHisto, outName )
 
 

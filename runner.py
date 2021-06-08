@@ -45,6 +45,8 @@ if __name__ == '__main__':
 	parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
 	parser.add_argument('--samples', '--json', dest='samplejson', default='dummy_samples.json', help='JSON file containing dataset and file locations (default: %(default)s)')
 	parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
+	parser.add_argument('--outputDir', type=str, default=None, help='Output directory')
+	parser.add_argument('--nTrueFile', type=str, default='', help='To specify nTrue file. To use the default leave it empty')
 
 	# Scale out
 	parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/condor', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
@@ -98,7 +100,7 @@ if __name__ == '__main__':
 				if args.only in sample_dict[key]:
 					sample_dict = dict([(key, [args.only])])
 
-	hist_dir = os.getcwd() + "/histograms/"
+	hist_dir = os.getcwd() + "/histograms/" if args.outputDir is None else args.outputDir
 	if not os.path.exists(hist_dir):
 		os.makedirs(hist_dir)
 
@@ -148,7 +150,7 @@ if __name__ == '__main__':
 		processor_instance = NanoProcessor()
 	elif args.workflow == "fattag":
 		from workflows.fatjet_tagger import NanoProcessor
-		processor_instance = NanoProcessor(year=args.year, JECfolder=jesInputFilePath)
+		processor_instance = NanoProcessor(year=args.year, JECfolder=jesInputFilePath, nTrueFile=args.nTrueFile)
 	else:
 		raise NotImplemented
 
