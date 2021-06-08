@@ -72,7 +72,7 @@ if __name__ == '__main__':
             puHisto.fill(dataset=isample, x=array['Pileup_nTrueInt'])
 
     outFolder = os.getcwd()+'/correction_files/' if args.outputDir is None else args.outputDir
-    outName = outFolder+( outFolder+'/'+args.outputName if args.outputName else outFolder+'/nTrueInt_'+args.samplejson.split('/')[-1].split('.json')[0]+'_'+str(args.year)+'.coffea' )
+    outName = outFolder+'/'+( args.outputName if args.outputName else '/nTrueInt_'+args.samplejson.split('/')[-1].split('.json')[0]+'_'+str(args.year)+'.coffea' )
     save( puHisto, outName )
 
 
