@@ -1,4 +1,5 @@
 stages:
+    - build
     - proxy
     - createPUfile
     - runCode
@@ -8,6 +9,16 @@ variables:
     inputFile : datasets/datasets_btag2017.json
     coffeaFile : hists_fattag_flavor_mutag_2017.coffea7
     year: 2017
+
+build_image:
+    stage: build
+    variables:
+        TO: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    tags:
+        - docker-image-build
+    script:
+        - ignore
+
 
 voms_proxy:
     stage: proxy
@@ -40,7 +51,6 @@ runPU:
     artifacts:
         paths:
             - test
-            #            - correction_files
 
 runcode:
     dependencies:
