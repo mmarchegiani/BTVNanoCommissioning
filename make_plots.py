@@ -13,6 +13,7 @@ from utils import histogram_settings, lumi
 parser = argparse.ArgumentParser(description='Plot histograms from coffea file')
 parser.add_argument('-i', '--input', type=str, help='Input histogram filename', required=True)
 parser.add_argument('-o', '--output', type=str, help='Output directory', required=True)
+parser.add_argument('--outputDir', type=str, default=None, help='Output directory')
 parser.add_argument('-s', '--scale', type=str, default='linear', help='Plot y-axis scale', required=False)
 parser.add_argument('-d', '--dense', action='store_true', help='Normalized plots')
 parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
@@ -101,7 +102,7 @@ selection_msd100tau06 = (r"$\geq$1 AK8 jets"+"\n"+
 totalLumi = 'TEST' if args.test else lumi[args.year]
 
 plt.style.use([hep.style.ROOT, {'font.size': 16}])
-plot_dir = "plots/" + args.output + "/"
+plot_dir = args.outputDir if args.outputDir else os.getcwd()+"/plots/" + args.output + "/"
 if not os.path.exists(plot_dir):
     os.makedirs(plot_dir)
 

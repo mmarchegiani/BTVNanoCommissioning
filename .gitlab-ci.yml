@@ -13,12 +13,11 @@ variables:
 build_image:
     stage: build
     variables:
-        TO: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+        TO: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-latest
     tags:
         - docker-image-build
     script:
         - ignore
-
 
 voms_proxy:
     stage: proxy
@@ -43,8 +42,7 @@ runPU:
     stage: createPUfile
     tags:
         - cvmfs
-    #image: coffeateam/coffea-base:latest
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - mkdir test
@@ -60,7 +58,6 @@ runcode:
     stage: runCode
     tags:
         - cvmfs
-    #image: coffeateam/coffea-base:latest
     image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
@@ -73,10 +70,9 @@ runplots:
     dependencies:
         - runcode
     stage: makePlots
-    #image: coffeateam/coffea-base:latest
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-latest
     script:
-        - python make_plots.py -i ${PWD}/histograms/"${coffeaFile}" -o ${PWD} -d --year "${year}" --selection basic --test
+        - python make_plots.py -i ${PWD}/histograms/"${coffeaFile}" -o test --outputDir ${PWD}/plots -d --year "${year}" --selection basic --test
     artifacts:
         paths:
             - plots
