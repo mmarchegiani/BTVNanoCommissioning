@@ -72,7 +72,7 @@ runplots:
     stage: makePlots
     image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-latest
     script:
-        - python make_plots.py -i ${PWD}/histograms/"${coffeaFile}" -o test --outputDir ${PWD}/plots -d --year "${year}" --selection basic --test
+        - python make_plots.py -i ${PWD}/histograms/"${coffeaFile}" -o test --outputDir ${PWD}/plots/ -d --year "${year}" --selection basic --test
     artifacts:
         paths:
             - plots
