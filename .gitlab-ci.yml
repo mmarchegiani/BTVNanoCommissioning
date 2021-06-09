@@ -58,7 +58,7 @@ runcode:
     stage: runCode
     tags:
         - cvmfs
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - python runner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
