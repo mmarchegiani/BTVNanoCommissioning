@@ -1,0 +1,62 @@
+runpu:
+    process:
+        process_type: 'interpolated-script-cmd'
+        interpreter: bash
+        script: |
+            cd {workingdir}
+            pwd -LP
+            ls 
+            python createNTrueForPU.py --samples datasets/{inputFile}.json --year {year} --outputDir {workingdir} --outputName {outputFile} 
+            ls 
+    environment: 
+        environment_type: 'docker-encapsulated'
+        #image: coffeateam/coffea-base
+        image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        imagetag: latest
+        resources:
+            - voms_proxy: true
+    publisher:
+        publisher_type: interpolated-pub
+        publish:
+            outputCoffea: '{workingdir}/{outputFile}'
+
+runcode:
+    process:
+        process_type: 'interpolated-script-cmd'
+        interpreter: bash
+        script: |
+            cd {workingdir}
+            pwd -LP
+            ls 
+            python runner.py --workflow fattag --executor futures --samples datasets/{inputFile}.json --output hists.coffea7 --year {year} --limit 5 --nTrueFile {nTrueFile} --outputDir {workingdir}
+            ls 
+    environment: 
+        environment_type: 'docker-encapsulated'
+        image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        imagetag: latest
+        resources:
+            - voms_proxy: true
+    publisher:
+        publisher_type: interpolated-pub
+        publish:
+            outputCoffea: '{workingdir}/hists.coffea7'
+
+makeplots:
+    process:
+        process_type: 'interpolated-script-cmd'
+        interpreter: bash
+        script: |
+            cd {workingdir}
+            pwd -LP
+            ls 
+            python make_plots.py -i {inputFile} -o test --outputDir {workingdir} -d --year {year} --selection basic --test
+            ls 
+    environment: 
+        environment_type: 'docker-encapsulated'
+        image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        imagetag: latest
+    publisher:
+        publisher_type: interpolated-pub
+        publish:
+            plots: '{workingdir}/*png'
+

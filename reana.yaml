@@ -1,0 +1,26 @@
+version: 0.7.2
+inputs:
+    directories:
+        - reana_workflows
+        - correction_files
+    files:
+        - createNTrueForPU.py
+        - runner.py
+        - make_plots.py
+        - utils.py
+        - workflows/fatjet_tagger.py
+        - datasets/datasets_btag2017.json
+        - datasets/datasets_btag2018.json
+    parameters:
+        inputFile: 
+            - datasets_btag2017
+        year : 
+            - 2017
+
+workflow:
+    type: yadage
+    file: reana_workflows/workflow.yaml
+
+outputs:
+    directories:
+        - plots 
