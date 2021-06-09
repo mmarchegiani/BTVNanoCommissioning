@@ -43,6 +43,15 @@ JECversions = {
                 'E' : 'Fall17_17Nov2017DE_V32_DATA',
                 'F' : 'Fall17_17Nov2017F_V32_DATA'
                 }
+            },
+        '2018' : {
+            'MC' : 'Autumn18_V19_MC',
+            'Data' : {
+                'A' : 'Autumn18_RunA_V19_DATA',
+                'B' : 'Autumn18_RunB_V19_DATA',
+                'C' : 'Autumn18_RunC_V19_DATA',
+                'D' : 'Autumn18_RunD_V19_DATA'
+                }
             }
         }
 

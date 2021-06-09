@@ -139,6 +139,14 @@ if __name__ == '__main__':
                     '/correction_files/JEC/Fall17_17Nov2017F_V32_DATA.tar.gz',
                     '/correction_files/JEC/Fall17_17Nov2017_V32_MC.tar.gz',
                     ]
+	if args.year==2018:
+		jecTarFiles = [
+                    '/correction_files/JEC/Autumn18_RunA_V19_DATA.tar.gz',
+                    '/correction_files/JEC/Autumn18_RunB_V19_DATA.tar.gz',
+                    '/correction_files/JEC/Autumn18_RunC_V19_DATA.tar.gz',
+                    '/correction_files/JEC/Autumn18_RunD_V19_DATA.tar.gz',
+                    '/correction_files/JEC/Autumn18_V19_MC.tar.gz',
+                    ]
 	for itar in jecTarFiles:
                 jecFile = os.getcwd()+itar
                 jesArchive = tarfile.open( jecFile, "r:gz")

@@ -6,9 +6,9 @@ stages:
     - makePlots
 
 variables:
-    inputFile : datasets/datasets_btag2017.json
-    coffeaFile : hists_fattag_flavor_mutag_2017.coffea7
-    year: 2017
+    inputFile : datasets/datasets_btag2018.json
+    coffeaFile : hists_fattag_flavor_mutag_2018.coffea7
+    year: 2018
 
 build_image:
     stage: build
