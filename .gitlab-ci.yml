@@ -61,6 +61,7 @@ runcode:
     image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
+        - pwd -LP
         - python runner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
     artifacts:
         paths:
