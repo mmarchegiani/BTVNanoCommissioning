@@ -62,7 +62,7 @@ runcode:
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - pwd -LP
-        - python runner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
+        - python simplerunner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
     artifacts:
         paths:
             - histograms 
@@ -73,7 +73,7 @@ runplots:
     stage: makePlots
     image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     script:
-        - python make_plots.py -i ${PWD}/histograms/"${coffeaFile}" -o test --outputDir ${PWD}/plots/ -d --year "${year}" --selection basic --test
+        - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection basic --test
     artifacts:
         paths:
             - plots

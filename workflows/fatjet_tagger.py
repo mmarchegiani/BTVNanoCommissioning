@@ -92,6 +92,7 @@ class NanoProcessor(processor.ProcessorABC):
         fatjet_eta_axis   = hist.Bin("eta",  r"lead. FatJet $\eta$", 60, -3, 3)
         fatjet_phi_axis   = hist.Bin("phi",  r"lead. FatJet $\phi$", 60, -np.pi, np.pi)
         fatjet_mass_axis  = hist.Bin("mass", r"lead. FatJet $m_{SD}$ [GeV]", 1000, 0, 1000)
+        fatjet_jetproba_axis = hist.Bin("Proba", r"lead. FatJet JP", 50, 0, 2.5)
 
         # Define similar axes dynamically
         disc_list = ["btagCMVA", "btagCSVV2", 'btagDeepB', 'btagDeepC', 'btagDeepFlavB', 'btagDeepFlavC',]
@@ -122,6 +123,7 @@ class NanoProcessor(processor.ProcessorABC):
                 'fatjet_nmusj2' : hist.Hist("Events", dataset_axis, flavor_axis, nmusj2_axis),
                 'fatjet_nsv1'   : hist.Hist("Events", dataset_axis, flavor_axis, nsv1_axis),
                 'fatjet_nsv2'   : hist.Hist("Events", dataset_axis, flavor_axis, nsv2_axis),
+                'fatjet_jetproba' : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_jetproba_axis),
             }
 
         for (i, disc) in enumerate(disc_list_fj):
@@ -148,7 +150,6 @@ class NanoProcessor(processor.ProcessorABC):
             }
         _sumw_dict = {'sumw': processor.defaultdict_accumulator(float),
                       'nbtagmu': processor.defaultdict_accumulator(float),
-                      'nbtagmu_event_level': processor.defaultdict_accumulator(float),
             }
 
         #self.jet_hists = list(_hist_jet_dict.keys())
@@ -337,16 +338,16 @@ class NanoProcessor(processor.ProcessorABC):
 
         flavors = {}
         if not isRealData:
-            flavors['_b'] = (leadfatjet.hadronFlavour == 5)
-            flavors['_c'] = (leadfatjet.hadronFlavour == 4)
-            flavors['_l'] = (leadfatjet.hadronFlavour < 4)
-            flavors['_bb'] = abs(leadfatjet.hadronFlavour == 5) & (leadfatjet.nBHadrons >= 2) #& (leadfatjet.nCHadrons == 0)
-            flavors['_cc'] = abs(leadfatjet.hadronFlavour == 4) & (leadfatjet.nBHadrons == 0) & (leadfatjet.nCHadrons >= 2)
-            #flavors['_ll'] = abs(leadfatjet.hadronFlavour < 4) & (leadfatjet.nBHadrons == 0) & (leadfatjet.nCHadrons == 0)
-            flavors['_b'] = flavors['_b'] & ~flavors['_bb']
-            flavors['_c'] = flavors['_c'] & ~flavors['_cc']
-            flavors['_l'] = flavors['_l'] & ~flavors['_bb'] & ~flavors['_cc'] & ~flavors['_b'] & ~flavors['_c']
-            #flavors['_others'] = ~flavors['_l'] & ~flavors['_bb'] & ~flavors['_cc'] & ~flavors['_b'] & ~flavors['_c']
+            flavors['b'] = (leadfatjet.hadronFlavour == 5)
+            flavors['c'] = (leadfatjet.hadronFlavour == 4)
+            flavors['l'] = (leadfatjet.hadronFlavour < 4)
+            flavors['bb'] = abs(leadfatjet.hadronFlavour == 5) & (leadfatjet.nBHadrons >= 2) #& (leadfatjet.nCHadrons == 0)
+            flavors['cc'] = abs(leadfatjet.hadronFlavour == 4) & (leadfatjet.nBHadrons == 0) & (leadfatjet.nCHadrons >= 2)
+            #flavors['ll'] = abs(leadfatjet.hadronFlavour < 4) & (leadfatjet.nBHadrons == 0) & (leadfatjet.nCHadrons == 0)
+            flavors['b'] = flavors['b'] & ~flavors['bb']
+            flavors['c'] = flavors['c'] & ~flavors['cc']
+            flavors['l'] = flavors['l'] & ~flavors['bb'] & ~flavors['cc'] & ~flavors['b'] & ~flavors['c']
+            #flavors['others'] = ~flavors['l'] & ~flavors['bb'] & ~flavors['cc'] & ~flavors['b'] & ~flavors['c']
         else:
             flavors['Data'] = np.ones(len(events), dtype='bool')
 
@@ -381,10 +382,4 @@ class NanoProcessor(processor.ProcessorABC):
         return output
 
     def postprocess(self, accumulator):
-
-        #isSplit = (len(accumulator['sumw'].keys()) <= 1)
-        #if not isSplit:
-            #accumulator = rescale(accumulator, xsecs, lumi[self.year])
-            #accumulator = rescale(accumulator, xsecs, lumi[2017])
-
         return accumulator

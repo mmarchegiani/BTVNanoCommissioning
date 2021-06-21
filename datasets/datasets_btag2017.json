@@ -6930,7 +6930,6 @@
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_44.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_74.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_56.root",
-        "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_95.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_45.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_71.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_82.root",
@@ -7180,7 +7179,6 @@
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_355.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_334.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_348.root",
-        "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_383.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_346.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_352.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017E-31Mar2018-v1_PFNanoAOD/210210_201743/0000/nano_data2017_292.root",
@@ -10159,5 +10157,6 @@
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017F-31Mar2018-v1_PFNanoAOD/210210_201800/0001/nano_data2017_1210.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017F-31Mar2018-v1_PFNanoAOD/210210_201800/0001/nano_data2017_1219.root",
         "root://grid-cms-xrootd.physik.rwth-aachen.de:1094//store/user/anovak/PFNano/106X_v2_17rsb2/BTagMu/Run2017F-31Mar2018-v1_PFNanoAOD/210210_201800/0001/nano_data2017_1104.root"
+
     ]
 }

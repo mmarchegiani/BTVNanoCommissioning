@@ -11,6 +11,7 @@ import numpy as np
 import uproot
 from coffea.util import load, save
 from coffea import processor
+from coffea.nanoevents import PFNanoAODSchema
 
 
 def validate(file):
@@ -138,7 +139,7 @@ if __name__ == '__main__':
                                                 executor=_exec,
                                                 executor_args={
                                                         'skipbadfiles':args.skipbadfiles,
-                                                        'schema': processor.NanoAODSchema,
+                                                        'schema': PFNanoAODSchema,
                                                         'workers': args.workers},
                                                 chunksize=args.chunk, maxchunks=args.max
                                                 )
