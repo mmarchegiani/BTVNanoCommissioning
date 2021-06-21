@@ -14,7 +14,6 @@ class NanoProcessor(processor.ProcessorABC):
     # Define histograms
     def __init__(self, year=2017, JECfolder='correction_files', nTrueFile=''):
         self.year = year
-        self.trigger = trigger
         self._mask_fatjets = {
             'basic'       : {
                 'pt_cut' : 250.,
@@ -319,8 +318,8 @@ class NanoProcessor(processor.ProcessorABC):
 
         ## FatJet cuts
         events.FatJet = events.FatJet[(events.FatJet.pt > self._mask_fatjets['basic']['pt_cut']) & (abs(events.FatJet.eta) <= self._mask_fatjets['basic']['eta_cut']) & (events.FatJet.jetId > self._mask_fatjets['basic']['jetId_cut'])  & (ak.count(events.FatJet.subjets.pt, axis=2) >= 2) ]  ## subjet sel to crosscheck
-        print(events.FatJetSVs.fields)
-        print(events['FatJetSVs'])
+        #print(events.FatJetSVs.fields)
+        #print(events['FatJetSVs'])
 
         ## Event level variables
         eventVariables = {}
