@@ -1,0 +1,33 @@
+stages:
+- name: runpu
+  dependencies: [init]
+  scheduler:
+      scheduler_type: 'singlestep-stage'
+      parameters:
+          inputFile: {step: init, output: inputFile}
+          year: {step: init, output: year}
+          workingdir: '$REANA_WORKSPACE'
+          outputFile: 'nTrueFile.coffea'
+      step: {$ref: 'reana_workflows/steps.yaml#/runpu'}
+
+- name: runcode
+  dependencies: [runpu]
+  scheduler:
+      scheduler_type: 'singlestep-stage'
+      parameters:
+          inputFile: {step: init, output: inputFile}
+          year: {step: init, output: year}
+          workingdir: '$REANA_WORKSPACE/'
+          nTrueFile: {step: runpu, output: outputCoffea}
+      step: {$ref: 'reana_workflows/steps.yaml#/runcode'}
+
+- name: makeplots
+  dependencies: [runcode]
+  scheduler:
+      scheduler_type: 'singlestep-stage'
+      parameters:
+          inputFile: {step: runcode, output: outputCoffea}
+          year: {step: init, output: year}
+          workingdir: '$REANA_WORKSPACE/'
+      step: {$ref: 'reana_workflows/steps.yaml#/makeplots'}
+

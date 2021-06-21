@@ -1,0 +1,80 @@
+stages:
+    - build
+    - proxy
+    - createPUfile
+    - runCode
+    - makePlots
+
+variables:
+    inputFile : datasets/datasets_btag2018.json
+    coffeaFile : hists_fattag_flavor_mutag_2018.coffea7
+    year: 2018
+
+build_image:
+    stage: build
+    variables:
+        TO: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    tags:
+        - docker-image-build
+    script:
+        - ignore
+
+voms_proxy:
+    stage: proxy
+    image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
+    artifacts:
+        paths:
+            - proxy
+    script:
+        - mkdir -p ${HOME}/.globus
+        - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
+        - printf "${GRID_USERKEY}" | base64 -d > ${HOME}/.globus/userkey.pem
+        - chmod 400 ${HOME}/.globus/userkey.pem
+        - printf "${GRID_PASSWORD}" | base64 -d | voms-proxy-init --voms cms --pwstdin
+        - voms-proxy-info --all
+        - export VOMSPROXY=$(voms-proxy-info -path)
+        - mkdir proxy
+        - cp ${VOMSPROXY} proxy/x509_proxy
+
+runPU:
+    dependencies:
+        - voms_proxy
+    stage: createPUfile
+    tags:
+        - cvmfs
+    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    script:
+        - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
+        - mkdir test
+        - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" --outputDir test --outputName testFile.coffea
+    artifacts:
+        paths:
+            - test
+
+runcode:
+    dependencies:
+        - voms_proxy
+        - runPU
+    stage: runCode
+    tags:
+        - cvmfs
+    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    script:
+        - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
+        - pwd -LP
+        - python simplerunner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
+    artifacts:
+        paths:
+            - histograms 
+
+runplots:
+    dependencies:
+        - runcode
+    stage: makePlots
+    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    script:
+        - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection basic --test
+    artifacts:
+        paths:
+            - plots
+
