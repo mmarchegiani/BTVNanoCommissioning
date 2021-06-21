@@ -8,7 +8,10 @@ from coffea.hist import plot
 import coffea.hist as hist
 import itertools
 import os
+import time
+import awkward as ak
 from utils import histogram_settings, lumi
+from multiprocessing import Pool
 
 parser = argparse.ArgumentParser(description='Plot histograms from coffea file')
 parser.add_argument('-i', '--input', type=str, help='Input histogram filename', required=True)
@@ -23,6 +26,10 @@ parser.add_argument('--data', type=str, default='BTagMu', help='Data sample name
 parser.add_argument('--selection', type=str, default='all', help='Plot only plots with this selection. ("all" to plot all the selections in file)')
 
 args = parser.parse_args()
+
+print("Starting ", end='')
+print(time.ctime())
+start = time.time()
 
 accumulator = load(args.input)
 
@@ -71,19 +78,19 @@ flavor_opts = {
 }
 
 selection = {
-    'basic' : (r"$\geq$1 AK8 jets"+"\n"+
-                  r"$p_T > 250 GeV$"+"\n"+
-                  r"$m_{SD} > 20 GeV$"+"\n"+
-                  r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
-    'msd50' : (r"$\geq$1 AK8 jets"+"\n"+
-                  r"$p_T > 250 GeV$"+"\n"+
-                  r"$m_{SD} > 50 GeV$"+"\n"+
-                  r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
+    'basic' :       (r"$\geq$1 AK8 jets"+"\n"+
+                     r"$p_T > 250 GeV$"+"\n"+
+                     r"$m_{SD} > 20 GeV$"+"\n"+
+                     r"$\geq$2 $\mu$-tagged subjets"+"\n"),
+    'pt350msd50' :  (r"$\geq$1 AK8 jets"+"\n"+
+                     r"$p_T > 350 GeV$"+"\n"+
+                     r"$m_{SD} > 50 GeV$"+"\n"+
+                     r"$\geq$2 $\mu$-tagged subjets"+"\n"),
     'msd100tau06' : (r"$\geq$1 AK8 jets"+"\n"+
-                  r"$p_T > 250 GeV$"+"\n"+
-                  r"$m_{SD} > 100 GeV$"+"\n"+
-                  r"$\tau_{21} < 0.6$"+"\n"+
-                  r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n")
+                     r"$p_T > 350 GeV$"+"\n"+
+                     r"$m_{SD} > 100 GeV$"+"\n"+
+                     r"$\tau_{21} < 0.6$"+"\n"+
+                     r"$\geq$2 $\mu$-tagged subjets"+"\n")
 }
 
 """
@@ -350,6 +357,77 @@ for histname in accumulator:
                 print("Saving", filepath)
                 plt.savefig(filepath, dpi=300, format="png")
                 plt.close(fig)
+                if 'fatjet_pt' in histname:
+                    if not '_vs_' in histname:
+                        raise NotImplementedError
+                    fig, ax = plt.subplots(1, 1, figsize=(12,9))
+                    plot.plot1d(histo_QCD_bb.sum('pt', 'flavor'), ax=ax, legend_opts={'loc':1}, density=args.dense, fill_opts=qcd_opts, stack=True)
+                    ggHbb_rescaled = histo_BB_bb.sum('pt', 'flavor')
+                    N_proxy = ak.sum(histo_QCD_bb.sum('pt', 'flavor').values().values())
+                    N_ggHbb = ak.sum(ggHbb_rescaled.values().values())
+                    #scale_ggH = 10000
+                    scale_ggH = N_proxy/N_ggHbb
+                    ggHbb_rescaled.scale(scale_ggH)
+                    plot.plot1d(ggHbb_rescaled, ax=ax, legend_opts={'loc':1}, density=args.dense, fill_opts=ggHbb_opts, stack=False, clear=False)
+                    hep.cms.text("Preliminary", ax=ax)
+                    hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
+                    ax.set_yscale(args.scale)
+                    if (not args.dense) & (args.scale == "log"):
+                        ax.set_ylim(0.1, 10**7)
+                    handles, labels = ax.get_legend_handles_labels()
+                    for (i, label) in enumerate(labels):
+                        if "QCD" in label:
+                            labels[i] = r"g$\rightarrow$bb"
+                        if "GluGlu" in label:
+                            labels[i] = r"ggH$\rightarrow$bb (bb component) $\times$" + str(round(scale_ggH))
+                    ax.legend(handles, labels)
+                    if 'basic' in histname:
+                        at = AnchoredText(selection['basic'], loc=2, frameon=False)
+                    elif 'pt350msd50' in histname:
+                        at = AnchoredText(selection['pt350msd50'], loc=2, frameon=False)
+                    elif 'msd100tau06' in histname:
+                        at = AnchoredText(selection['msd100tau06'], loc=2, frameon=False)
+                    ax.add_artist(at)
+                    filepath = plot_dir + "hist1d_" + histname.split('_vs_')[-1] + "_bb.png"
+                    if args.scale != parser.get_default('scale'):
+                        filepath = filepath.replace(".png", "_" + args.scale + ".png")
+                    print("Saving", filepath)
+                    plt.savefig(filepath, dpi=300, format="png")
+                    plt.close(fig)
+                    fig, ax = plt.subplots(1, 1, figsize=(12,9))
+                    plot.plot1d(histo_QCD_cc.sum('pt', 'flavor'), ax=ax, legend_opts={'loc':1}, density=args.dense, fill_opts=qcd_opts, stack=True)
+                    ggHcc_rescaled = histo_CC_cc.sum('pt', 'flavor')
+                    N_proxy = ak.sum(histo_QCD_cc.sum('pt', 'flavor').values().values())
+                    N_ggHcc = ak.sum(ggHcc_rescaled.values().values())
+                    #scale_ggH = 10000
+                    scale_ggH = N_proxy/N_ggHcc
+                    ggHcc_rescaled.scale(scale_ggH)
+                    plot.plot1d(ggHcc_rescaled, ax=ax, legend_opts={'loc':1}, density=args.dense, fill_opts=ggHcc_opts, stack=False, clear=False)
+                    hep.cms.text("Preliminary", ax=ax)
+                    hep.cms.lumitext(text=f'{lumi[args.year]}' + r' fb$^{-1}$, 13 TeV,' + f' {args.year}', fontsize=18, ax=ax)
+                    ax.set_yscale(args.scale)
+                    if (not args.dense) & (args.scale == "log"):
+                        ax.set_ylim(0.1, 10**7)
+                    handles, labels = ax.get_legend_handles_labels()
+                    for (i, label) in enumerate(labels):
+                        if "QCD" in label:
+                            labels[i] = r"g$\rightarrow$cc"
+                        if "GluGlu" in label:
+                            labels[i] = r"ggH$\rightarrow$cc (cc component) $\times$" + str(round(scale_ggH))
+                    ax.legend(handles, labels)
+                    if 'basic' in histname:
+                        at = AnchoredText(selection['basic'], loc=2, frameon=False)
+                    elif 'pt350msd50' in histname:
+                        at = AnchoredText(selection['pt350msd50'], loc=2, frameon=False)
+                    elif 'msd100tau06' in histname:
+                        at = AnchoredText(selection['msd100tau06'], loc=2, frameon=False)
+                    ax.add_artist(at)
+                    filepath = plot_dir + "hist1d_" + histname.split('_vs_')[-1] + "_cc.png"
+                    if args.scale != parser.get_default('scale'):
+                        filepath = filepath.replace(".png", "_" + args.scale + ".png")
+                    print("Saving", filepath)
+                    plt.savefig(filepath, dpi=300, format="png")
+                    plt.close(fig)
 
         for flavor in flavors:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24,9))
