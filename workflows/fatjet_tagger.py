@@ -14,6 +14,7 @@ class NanoProcessor(processor.ProcessorABC):
     # Define histograms
     def __init__(self, year=2017, JECfolder='correction_files', nTrueFile=''):
         self.year = year
+        self.trigger = trigger
         self._mask_fatjets = {
             'basic'       : {
                 'pt_cut' : 250.,
