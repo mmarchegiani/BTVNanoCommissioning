@@ -298,7 +298,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         trig_arrs = [events.HLT[_trig.strip("HLT_")] for _trig in self.triggers]
         if isRealData:
-            req_trig = np.zeros(len(events), dtype='bool')
+            req_trig = np.ones(len(events), dtype='bool')
             for t in trig_arrs:
                 req_trig = req_trig | t
         else:
