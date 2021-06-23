@@ -21,9 +21,9 @@ for file in files_to_check:
 	f = uproot.open(file)
 	keys = f['Events'].keys()
 	nkeys = len(keys)
-	if nkeys < 10:
-		print(file)
+	if nkeys > 10:
+		print('"'+file+'",')
 		keys_broken.append(keys)
 
-for item in keys_broken:
-	print(item)
+#for item in keys_broken:
+#	print(item)
