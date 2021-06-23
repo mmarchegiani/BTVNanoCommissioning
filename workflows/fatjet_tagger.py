@@ -93,6 +93,7 @@ class NanoProcessor(processor.ProcessorABC):
         fatjet_phi_axis   = hist.Bin("phi",  r"lead. FatJet $\phi$", 60, -np.pi, np.pi)
         fatjet_mass_axis  = hist.Bin("mass", r"lead. FatJet $m_{SD}$ [GeV]", 1000, 0, 1000)
         fatjet_jetproba_axis = hist.Bin("Proba", r"lead. FatJet JP", 50, 0, 2.5)
+        fatjet_vertexmass_axis  = hist.Bin("vertexmass", r"lead. FatJet tau1 vertex $m_{SD}$ [GeV]", 1000, 0, 1000)
 
         # Define similar axes dynamically
         disc_list = ["btagCMVA", "btagCSVV2", 'btagDeepB', 'btagDeepC', 'btagDeepFlavB', 'btagDeepFlavC',]
@@ -124,6 +125,7 @@ class NanoProcessor(processor.ProcessorABC):
                 'fatjet_nsv1'   : hist.Hist("Events", dataset_axis, flavor_axis, nsv1_axis),
                 'fatjet_nsv2'   : hist.Hist("Events", dataset_axis, flavor_axis, nsv2_axis),
                 'fatjet_jetproba' : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_jetproba_axis),
+                'fatjet_DDX_tau1_vertexMass' : hist.Hist("Events", dataset_axis, flavor_axis, fatjet_mass_axis),
             }
 
         for (i, disc) in enumerate(disc_list_fj):
@@ -297,12 +299,9 @@ class NanoProcessor(processor.ProcessorABC):
                     self.triggers[i] = trigger + "_noalgo"
 
         trig_arrs = [events.HLT[_trig.strip("HLT_")] for _trig in self.triggers]
-        if isRealData:
-            req_trig = np.ones(len(events), dtype='bool')
-            for t in trig_arrs:
-                req_trig = req_trig | t
-        else:
-            req_trig = np.ones(len(events), dtype='bool')
+        req_trig = np.zeros(len(events), dtype='bool')
+        for t in trig_arrs:
+            req_trig = req_trig | t
         cuts.add('trigger', ak.to_numpy(req_trig))
 
         ############
@@ -318,7 +317,6 @@ class NanoProcessor(processor.ProcessorABC):
 
         ## FatJet cuts
         events.FatJet = events.FatJet[(events.FatJet.pt > self._mask_fatjets['basic']['pt_cut']) & (abs(events.FatJet.eta) <= self._mask_fatjets['basic']['eta_cut']) & (events.FatJet.jetId > self._mask_fatjets['basic']['jetId_cut'])  & (ak.count(events.FatJet.subjets.pt, axis=2) >= 2) ]  ## subjet sel to crosscheck
-        #print(events.FatJetSVs.fields)
         #print(events['FatJetSVs'])
 
         ## Event level variables
