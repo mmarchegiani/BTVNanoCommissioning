@@ -43,6 +43,15 @@ JECversions = {
                 'E' : 'Fall17_17Nov2017DE_V32_DATA',
                 'F' : 'Fall17_17Nov2017F_V32_DATA'
                 }
+            },
+        '2018' : {
+            'MC' : 'Autumn18_V19_MC',
+            'Data' : {
+                'A' : 'Autumn18_RunA_V19_DATA',
+                'B' : 'Autumn18_RunB_V19_DATA',
+                'C' : 'Autumn18_RunC_V19_DATA',
+                'D' : 'Autumn18_RunD_V19_DATA'
+                }
             }
         }
 
@@ -56,17 +65,17 @@ histogram_settings = {
         'fatjet_btagDDBvLV2'  : {'binning' : {'n_or_arr' : 20,  'lo' : 0,      'hi' : 1},     'xlim' : {'xmin' : 0, 'xmax' : 1}},
         'fatjet_btagDDCvLV2'  : {'binning' : {'n_or_arr' : 20,  'lo' : 0,      'hi' : 1},     'xlim' : {'xmin' : 0, 'xmax' : 1}},
         'fatjet_btagDDCvBV2'  : {'binning' : {'n_or_arr' : 20,  'lo' : 0,      'hi' : 1},     'xlim' : {'xmin' : 0, 'xmax' : 1}},
-        'nsv1'         : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
-        'nsv2'         : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
-        'nmusj1'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
-        'nmusj2'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'fatjet_nsv1'         : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'fatjet_nsv2'         : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'fatjet_nmusj1'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'fatjet_nmusj2'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
     }
 }
 
 def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
 #def rescale(accumulator, xsecs=xsecs, data="BTagMu"):
     """Scale by lumi"""
-    #lumi = 1000*lumi    # Convert lumi to pb^-1
+    lumi = 1000*lumi    # Convert lumi to pb^-1
     from coffea import hist
     scale = {}
     sumxsecs = ak.sum(xsecs.values())
@@ -82,11 +91,17 @@ def rescale(accumulator, xsecs=xsecs, lumi=lumi, data="BTagMu"):
             scale[dataset] = 0#lumi / N_mc
     print(scale)
 
-    datasets_mc = [item for item in list(xsecs.keys()) if not 'GluGlu' in item]
+    for h in accumulator.values():
+        if isinstance(h, hist.Hist):
+            break
+    dataset_names = [str(item) for item in h.identifiers(axis='dataset')]
+    #datasets_mc   = [item for item in list(xsecs.keys()) if not 'GluGlu' in item]
+    datasets_mc = list(xsecs.keys())
+    datasets_data = [item for item in dataset_names if data in item]
     for h in accumulator.values():
         if isinstance(h, hist.Hist):
             h.scale(scale,       axis="dataset")
-            N_data = ak.sum(h[data].values().values())
+            N_data = ak.sum(h[datasets_data].values().values())
             N_mc = ak.sum(h[datasets_mc].sum('dataset', 'flavor').values().values())
             #scaletodata = dict(zip(scale.keys(), len(scale)*[1./N_data]))
             scaletodata = dict(zip(scale.keys(), len(scale)*[N_data/N_mc]))

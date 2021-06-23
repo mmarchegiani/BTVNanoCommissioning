@@ -8,11 +8,12 @@ from coffea.hist import plot
 import coffea.hist as hist
 import itertools
 import os
-from utils import histogram_settings, lumi
+from utils import histogram_settings, rescale, lumi, xsecs
 
 parser = argparse.ArgumentParser(description='Plot histograms from coffea file')
 parser.add_argument('-i', '--input', type=str, help='Input histogram filename', required=True)
 parser.add_argument('-o', '--output', type=str, help='Output directory', required=True)
+parser.add_argument('--outputDir', type=str, default=None, help='Output directory')
 parser.add_argument('-s', '--scale', type=str, default='linear', help='Plot y-axis scale', required=False)
 parser.add_argument('-d', '--dense', action='store_true', help='Normalized plots')
 parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
@@ -24,6 +25,7 @@ parser.add_argument('--selection', type=str, default='all', help='Plot only plot
 args = parser.parse_args()
 
 accumulator = load(args.input)
+accumulator = rescale(accumulator, xsecs, lumi[args.year])
 
 data_err_opts = {
     'linestyle': 'none',
@@ -75,11 +77,11 @@ selection = {
                   r"$m_{SD} > 20 GeV$"+"\n"+
                   r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
     'msd50' : (r"$\geq$1 AK8 jets"+"\n"+
-                  r"$p_T > 250 GeV$"+"\n"+
+                  r"$p_T > 350 GeV$"+"\n"+
                   r"$m_{SD} > 50 GeV$"+"\n"+
                   r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
     'msd100tau06' : (r"$\geq$1 AK8 jets"+"\n"+
-                  r"$p_T > 250 GeV$"+"\n"+
+                  r"$p_T > 350 GeV$"+"\n"+
                   r"$m_{SD} > 100 GeV$"+"\n"+
                   r"$\tau_{21} < 0.6$"+"\n"+
                   r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n")
@@ -101,7 +103,7 @@ selection_msd100tau06 = (r"$\geq$1 AK8 jets"+"\n"+
 totalLumi = 'TEST' if args.test else lumi[args.year]
 
 plt.style.use([hep.style.ROOT, {'font.size': 16}])
-plot_dir = "plots/" + args.output + "/"
+plot_dir = args.outputDir if args.outputDir else os.getcwd()+"/plots/" + args.output + "/"
 if not os.path.exists(plot_dir):
     os.makedirs(plot_dir)
 
@@ -116,14 +118,16 @@ for histname in accumulator:
 
     if any([histname.startswith('cutflow')]): break
     h = accumulator[histname]
-    if histname in histogram_settings['variables'].keys():
+    if histname.startswith(tuple(histogram_settings['variables'].keys())):
+        print(f"Rebinning {histname}")
         varname = h.fields[-1]
         varlabel = h.axis(varname).label
-        h = h.rebin(varname, hist.Bin(varname, varlabel, **histogram_settings['variables'][histname]['binning']))
+        dict_key = '_'.join(histname.split('_')[:-1])
+        h = h.rebin(varname, hist.Bin(varname, varlabel, **histogram_settings['variables'][dict_key]['binning']))
     datasets = [str(s) for s in h.axis('dataset').identifiers() if str(s) != 'dataset']
     mapping = {
         r'QCD ($\mu$ enriched)' : [dataset for dataset in datasets if 'QCD_Pt' in dataset],
-        r'BTagMu': [ idata for idata in datasets if args.data in idata ],
+        args.data : [ idata for idata in datasets if args.data in idata ],
     }
     for dataset in datasets:
         if 'QCD' in dataset: continue
@@ -135,8 +139,8 @@ for histname in accumulator:
     datasets_ggH = [dataset for dataset in datasets if 'GluGlu' in dataset]
 
     h = h.group("dataset", hist.Cat("dataset", "Dataset"), mapping)
-    flavors = ['_bb', '_cc', '_b', '_c', '_l']
-    #flavors = ['bb', 'cc', 'b', 'c', 'light']
+    flavors = ['bb', 'cc', 'b', 'c', 'l']
+    #flavors = ['_bb', '_cc', '_b', '_c', '_l']
     #flavors = ['bb', 'cc', 'b', 'c', 'light', 'others']
     if hist1d:
         if args.hist2d: continue
@@ -164,9 +168,9 @@ for histname in accumulator:
         rax.set_ylabel('Data/MC')
         #.rax.set_yscale(args.scale)
         rax.set_ylim(0.5,1.5)
-        if histname in histogram_settings['variables'].keys():
-            ax.set_xlim(**histogram_settings['variables'][histname]['xlim'])
-            rax.set_xlim(**histogram_settings['variables'][histname]['xlim'])
+        if histname.startswith(tuple(histogram_settings['variables'].keys())):
+            ax.set_xlim(**histogram_settings['variables'][dict_key]['xlim'])
+            rax.set_xlim(**histogram_settings['variables'][dict_key]['xlim'])
         if 'basic' in histname:
             at = AnchoredText(selection['basic'], loc=2, frameon=False)
         elif 'msd50' in histname:
@@ -206,9 +210,9 @@ for histname in accumulator:
         rax.set_ylabel('Data/MC')
         #rax.set_yscale(args.scale)
         rax.set_ylim(0.5,1.5)
-        if histname in histogram_settings['variables'].keys():
-            ax.set_xlim(**histogram_settings['variables'][histname]['xlim'])
-            rax.set_xlim(**histogram_settings['variables'][histname]['xlim'])
+        if histname.startswith(tuple(histogram_settings['variables'].keys())):
+            ax.set_xlim(**histogram_settings['variables'][dict_key]['xlim'])
+            rax.set_xlim(**histogram_settings['variables'][dict_key]['xlim'])
         if 'basic' in histname:
             at = AnchoredText(selection['basic'], loc=2, frameon=False)
         elif 'msd50' in histname:
@@ -230,6 +234,7 @@ for histname in accumulator:
         plt.savefig(filepath, dpi=300, format="png")
         plt.close(fig)
     else:
+        continue
         for dataset in datasets:
             if 'QCD' in dataset:
                 #histo_QCD = h[dataset].sum('dataset')

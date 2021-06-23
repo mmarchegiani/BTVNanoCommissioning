@@ -45,6 +45,8 @@ if __name__ == '__main__':
 	parser.add_argument('-o', '--output', default=r'hists.coffea', help='Output histogram filename (default: %(default)s)')
 	parser.add_argument('--samples', '--json', dest='samplejson', default='dummy_samples.json', help='JSON file containing dataset and file locations (default: %(default)s)')
 	parser.add_argument('--year', type=int, choices=[2016, 2017, 2018], help='Year of data/MC samples', required=True)
+	parser.add_argument('--outputDir', type=str, default=None, help='Output directory')
+	parser.add_argument('--nTrueFile', type=str, default='', help='To specify nTrue file. To use the default leave it empty')
 
 	# Scale out
 	parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/condor', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
@@ -98,7 +100,7 @@ if __name__ == '__main__':
 				if args.only in sample_dict[key]:
 					sample_dict = dict([(key, [args.only])])
 
-	hist_dir = os.getcwd() + "/histograms/"
+	hist_dir = os.getcwd() + "/histograms/" if args.outputDir is None else args.outputDir
 	if not os.path.exists(hist_dir):
 		os.makedirs(hist_dir)
 
@@ -126,21 +128,29 @@ if __name__ == '__main__':
 				os.system(f'rm {fi}')
 		sys.exit(0)
 
-        ##### Untar JECs
-        ##### Correction files in https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECDataMC
+		##### Untar JECs
+		##### Correction files in https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECDataMC
 	jesInputFilePath = tempfile.mkdtemp()
 	if args.year==2017:
 		jecTarFiles = [
-                    '/correction_files/JEC/Fall17_17Nov2017B_V32_DATA.tar.gz',
-                    '/correction_files/JEC/Fall17_17Nov2017C_V32_DATA.tar.gz',
-                    '/correction_files/JEC/Fall17_17Nov2017DE_V32_DATA.tar.gz',
-                    '/correction_files/JEC/Fall17_17Nov2017F_V32_DATA.tar.gz',
-                    '/correction_files/JEC/Fall17_17Nov2017_V32_MC.tar.gz',
-                    ]
+					'/correction_files/JEC/Fall17_17Nov2017B_V32_DATA.tar.gz',
+					'/correction_files/JEC/Fall17_17Nov2017C_V32_DATA.tar.gz',
+					'/correction_files/JEC/Fall17_17Nov2017DE_V32_DATA.tar.gz',
+					'/correction_files/JEC/Fall17_17Nov2017F_V32_DATA.tar.gz',
+					'/correction_files/JEC/Fall17_17Nov2017_V32_MC.tar.gz',
+					]
+	elif args.year==2018:
+		jecTarFiles = [
+					'/correction_files/JEC/Autumn18_RunA_V19_DATA.tar.gz',
+					'/correction_files/JEC/Autumn18_RunB_V19_DATA.tar.gz',
+					'/correction_files/JEC/Autumn18_RunC_V19_DATA.tar.gz',
+					'/correction_files/JEC/Autumn18_RunD_V19_DATA.tar.gz',
+					'/correction_files/JEC/Autumn18_V19_MC.tar.gz',
+					]
 	for itar in jecTarFiles:
-                jecFile = os.getcwd()+itar
-                jesArchive = tarfile.open( jecFile, "r:gz")
-                jesArchive.extractall(jesInputFilePath)
+				jecFile = os.getcwd()+itar
+				jesArchive = tarfile.open( jecFile, "r:gz")
+				jesArchive.extractall(jesInputFilePath)
 
 	# load workflow
 	if args.workflow == "ttcom":
@@ -148,7 +158,7 @@ if __name__ == '__main__':
 		processor_instance = NanoProcessor()
 	elif args.workflow == "fattag":
 		from workflows.fatjet_tagger import NanoProcessor
-		processor_instance = NanoProcessor(year=args.year, JECfolder=jesInputFilePath)
+		processor_instance = NanoProcessor(year=args.year, JECfolder=jesInputFilePath, nTrueFile=args.nTrueFile)
 	else:
 		raise NotImplemented
 
@@ -371,9 +381,9 @@ if __name__ == '__main__':
 
 	if not args.splitdataset:
 		if args.offset == parser.get_default("offset"):
-			if len(sample_dict.keys()) > 1:
-				output = rescale(output, xsecs, lumi[args.year])
-				#output = rescale(output, xsecs, lumi[args.year], "JetHT")
+			#if len(sample_dict.keys()) > 1:     ##################### needs fix.
+			#	output = rescale(output, xsecs, lumi[args.year])
+			#	#output = rescale(output, xsecs, lumi[args.year], "JetHT")
 			save(output, hist_dir + args.output)
 			print(output)
 			print(f"Saving output to {hist_dir + args.output}")
