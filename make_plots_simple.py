@@ -90,16 +90,39 @@ selection = {
                   r"$m_{SD} > 20 GeV$"+"\n"+
                   r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
     'pt350msd50' : (r"$\geq$1 AK8 jets"+"\n"+
-                  r"$p_T > 250 GeV$"+"\n"+
+                  r"$p_T > 350 GeV$"+"\n"+
                   r"$m_{SD} > 50 GeV$"+"\n"+
                   r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
     'msd100tau06' : (r"$\geq$1 AK8 jets"+"\n"+
-                  r"$p_T > 250 GeV$"+"\n"+
+                  r"$p_T > 350 GeV$"+"\n"+
                   r"$m_{SD} > 100 GeV$"+"\n"+
                   r"$\tau_{21} < 0.6$"+"\n"+
-                  r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n")
+                  r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
+    'pt400msd100tau06' : (r"$\geq$1 AK8 jets"+"\n"+
+                  r"$p_T > 400 GeV$"+"\n"+
+                  r"$m_{SD} > 100 GeV$"+"\n"+
+                  r"$\tau_{21} < 0.6$"+"\n"+
+                  r"$\geq$2 $\mu$-tagged AK4 subjets"+"\n"),
 }
 
+_final_mask = ['msd100tau06', 'pt400msd100tau06']
+_mask_DDX = {
+            'DDB' : {
+                #'L' : XX,
+                'M' : 0.7
+            },
+            'DDC' : {
+                #'L' : XX,
+                'M' : 0.45
+            }, 
+}
+for mask_f in _final_mask:
+    for DDX in _mask_DDX.keys():
+        for wp, cut in _mask_DDX[DDX].items():
+            selection[f'{mask_f}{DDX}pass{wp}wp'] = selection[mask_f]
+            selection[f'{mask_f}{DDX}pass{wp}wp'] += f"{DDX}vLV2 > {str(cut)}"+"\n"
+            selection[f'{mask_f}{DDX}fail{wp}wp'] = selection[mask_f]
+            selection[f'{mask_f}{DDX}fail{wp}wp'] += f"{DDX}vLV2 < {str(cut)}"+"\n"
 """
 selection_basic = (r"$\geq$1 AK8 jets"+"\n"+
                   r"$p_T > 250 GeV$"+"\n"+

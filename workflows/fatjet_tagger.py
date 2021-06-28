@@ -24,6 +24,7 @@ class NanoProcessor(processor.ProcessorABC):
                     },
             'pt350msd50'       : {
                 'pt_cut' : 350.,
+                #'pt_cut' : 400.,
                 'eta_cut': 2.4,
                 'jetId_cut': 3 if self.year==2016 else 2,
                 'mass_cut' : 50.,
@@ -36,6 +37,24 @@ class NanoProcessor(processor.ProcessorABC):
                 'mass_cut' : 100.,
                 'tau21_cut' : 0.6
                     },
+            'pt400msd100tau06'       : {
+                'pt_cut' : 400.,
+                'eta_cut': 2.4,
+                'jetId_cut': 3 if self.year==2016 else 2,
+                'mass_cut' : 100.,
+                'tau21_cut' : 0.6
+                    },
+        }
+        self._final_mask = ['msd100tau06', 'pt400msd100tau06']
+        self._mask_DDX = {
+            'DDB' : {
+                #'L' : XX,
+                'M' : 0.7
+            },
+            'DDC' : {
+                #'L' : XX,
+                'M' : 0.45
+            }, 
         }
         self.year = year
         self.corrJECfolder = JECfolder
@@ -48,7 +67,7 @@ class NanoProcessor(processor.ProcessorABC):
         if self.year == 2017:
             self.puFile = os.getcwd()+'/correction_files/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'
             #self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'
-            self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_btag2017_2017.coffea'
+            self.nTrueFile = os.getcwd()+'/correction_files/nTrueInt_datasets_local_fixed_btag2017_2017.coffea'
         if self.year == 2018:
             #self.puFile = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions18/13TeV/PileUp/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'
             self.puFile = os.getcwd()+'/correction_files/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'
@@ -172,17 +191,32 @@ class NanoProcessor(processor.ProcessorABC):
             d[f'{histname}_{masks[0]}'] = h
             for maskname in masks[1:]:
                 d[f'{histname}_{maskname}'] = h.copy()
+                if maskname in self._final_mask:
+                    for DDX in self._mask_DDX.keys():
+                        for wp in self._mask_DDX[DDX].keys():
+                            d[f'{histname}_{maskname}{DDX}pass{wp}wp'] = h.copy()
+                            d[f'{histname}_{maskname}{DDX}fail{wp}wp'] = h.copy()
         self._hist_dict = d.copy()
 
         l = []
         for histname in self.fatjet_hists:
             for maskname in masks:
                 l.append(f'{histname}_{maskname}')
+                if maskname in self._final_mask:
+                    for DDX in self._mask_DDX.keys():
+                        for wp in self._mask_DDX[DDX].keys():
+                            l.append(f'{histname}_{maskname}{DDX}pass{wp}wp')
+                            l.append(f'{histname}_{maskname}{DDX}fail{wp}wp')
         self.fatjet_hists = l
         l = []
         for histname in self.event_hists:
             for maskname in masks:
                 l.append(f'{histname}_{maskname}')
+                if maskname in self._final_mask:
+                    for DDX in self._mask_DDX.keys():
+                        for wp in self._mask_DDX[DDX].keys():
+                            l.append(f'{histname}_{maskname}{DDX}pass{wp}wp')
+                            l.append(f'{histname}_{maskname}{DDX}fail{wp}wp')
         self.event_hists = l
 
         return self._hist_dict
@@ -336,6 +370,13 @@ class NanoProcessor(processor.ProcessorABC):
         fatjet_mutag = (leadfatjet.nmusj1 >= 1) & (leadfatjet.nmusj2 >= 1)
         cuts.add( 'fatjet_mutag', ak.to_numpy(fatjet_mutag) )
 
+        for DDX in self._mask_DDX.keys():
+            for wp, cut in self._mask_DDX[DDX].items():
+                DDX_pass = (leadfatjet[f'btag{DDX}vLV2'] > cut)
+                DDX_fail = (leadfatjet[f'btag{DDX}vLV2'] < cut)
+                cuts.add( f'{DDX}_pass{wp}wp', ak.to_numpy(DDX_pass) )
+                cuts.add( f'{DDX}_fail{wp}wp', ak.to_numpy(DDX_fail) )
+
         flavors = {}
         if not isRealData:
             flavors['b'] = (leadfatjet.hadronFlavour == 5)
@@ -358,6 +399,7 @@ class NanoProcessor(processor.ProcessorABC):
                     (abs(leadfatjet.eta) < cut['eta_cut']) & \
                     (leadfatjet.jetId >= cut['jetId_cut']) & \
                     (leadfatjet.tau21 < cut['tau21_cut'])
+                    #(leadfatjet.Hbb > cut['Hbb'])
 
             cuts.add( selname, ak.to_numpy( sel ) )
 
@@ -365,6 +407,14 @@ class NanoProcessor(processor.ProcessorABC):
         selection['basic'] = { 'trigger', 'basic' }
         selection['pt350msd50'] = { 'trigger', 'fatjet_mutag', 'pt350msd50' }
         selection['msd100tau06'] = { 'trigger', 'fatjet_mutag', 'msd100tau06' }
+        selection['pt400msd100tau06'] = { 'trigger', 'fatjet_mutag', 'pt400msd100tau06' }
+        for mask_f in self._final_mask:
+            for DDX in self._mask_DDX.keys():
+                for wp, cut in self._mask_DDX[DDX].items():
+                    selection[f'{mask_f}{DDX}pass{wp}wp'] = selection[mask_f].copy()
+                    selection[f'{mask_f}{DDX}pass{wp}wp'].add(f'{DDX}_pass{wp}wp')
+                    selection[f'{mask_f}{DDX}fail{wp}wp'] = selection[mask_f].copy()
+                    selection[f'{mask_f}{DDX}fail{wp}wp'].add(f'{DDX}_fail{wp}wp')
 
         for histname, h in output.items():
             sel = [ r for r in selection.keys() if r in histname.split('_') ]
