@@ -12,6 +12,9 @@ import uproot
 from coffea.util import load, save
 from coffea import processor
 from coffea.nanoevents import PFNanoAODSchema
+from distributed import Client
+from dask_jobqueue import HTCondorCluster
+import socket
 
 
 def validate(file):
@@ -36,6 +39,7 @@ if __name__ == '__main__':
     # Scale out
     parser.add_argument('--executor', choices=['iterative', 'futures', 'parsl/condor', 'parsl/slurm', 'dask/condor', 'dask/slurm'], default='futures', help='The type of executor to use (default: %(default)s)')
     parser.add_argument('-j', '--workers', type=int, default=12, help='Number of workers (cores/threads) to use for multi-worker executors (e.g. futures or condor) (default: %(default)s)')
+    parser.add_argument('-s', '--scaleout', type=int, default=6, help='Number of nodes to scale out to if using slurm/condor. Total number of concurrent threads is ``workers x scaleout`` (default: %(default)s)')
 
     # Debugging
     parser.add_argument('--validate', action='store_true', help='Do not process, just check all files are accessible')
@@ -129,18 +133,49 @@ if __name__ == '__main__':
 
     #########
     # Execute
-    if args.executor == 'iterative':
-        _exec = processor.iterative_executor
-    else:
-        _exec = processor.futures_executor
+    _exec_args = {
+                    'skipbadfiles':args.skipbadfiles,
+                    'schema': PFNanoAODSchema,
+                    'workers': args.workers}
+    if args.executor.startswith('iterative'): _exec = processor.iterative_executor
+    elif args.executor.startswith('futures'): _exec = processor.futures_executor
+    elif args.executor.startswith('dask/condor'):
+        _exec = processor.dask_executor
+        n_port = 8786
+        cluster = HTCondorCluster(
+                    cores=1,
+                    memory='2000MB',
+                    disk='1000MB',
+                    death_timeout = '60',
+                    nanny = False,
+                    scheduler_options={
+                        'port': n_port,
+                        'host': socket.gethostname()
+                        },
+                    job_extra={
+                        'log': 'dask_job_output.log',
+                        'output': 'dask_job_output.out',
+                        'error': 'dask_job_output.err',
+                        'should_transfer_files': 'Yes',
+                        'when_to_transfer_output': 'ON_EXIT',
+                        '+JobFlavour': '"tomorrow"',
+                        },
+                    extra = ['--worker-port {}'.format(n_port)]
+                )
+        cluster.scale(jobs=args.scaleout)
+        print(cluster.job_script())
+        client = Client(cluster)
+        _exec_args = {
+                    'schema': PFNanoAODSchema,
+                    'align_clusters' : True,
+                    'client': client
+                    }
+
     output = processor.run_uproot_job(sample_dict,
                                                 treename='Events',
                                                 processor_instance=processor_instance,
                                                 executor=_exec,
-                                                executor_args={
-                                                        'skipbadfiles':args.skipbadfiles,
-                                                        'schema': PFNanoAODSchema,
-                                                        'workers': args.workers},
+                                                executor_args=_exec_args,
                                                 chunksize=args.chunk, maxchunks=args.max
                                                 )
     filepath = hist_dir + args.output
