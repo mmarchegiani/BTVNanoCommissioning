@@ -21,7 +21,7 @@ build_image:
 build_combine:
     stage: build
     variables:
-        IMAGE_DESTINATION: $CI_REGISTRY_IMAGE_combine:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+        IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
     image:
         name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
         entrypoint: [""]
