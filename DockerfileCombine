@@ -1,20 +1,20 @@
 FROM gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cmssw_10_2_21-slc7_amd64_gcc700:2020-09-22-ef834977
 
 #RUN cd /home/cmsusr/CMSSW_10_2_21/src/ && \
-RUN ls / && \
-    pwd -LP && ls -lR && \
-    eval `/cvmfs/cms.cern.ch/common/scramv1 runtime -sh` && \
-    git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit  && \
-    cd HiggsAnalysis/CombinedLimit/   && \
-    git fetch origin  && \
-    git checkout v8.2.0  && \
-    cd $CMSSW_BASE/src/ && \
-    /cvmfs/cms.cern.ch/common/scramv1 b clean && \
-    /cvmfs/cms.cern.ch/common/scramv1 b  && \
-    eval `scramv1 runtime -sh` && \
-    pip3 install --upgrade pip --user && \
-    pip3 install flake8 --user && \
-    pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
+RUN ls -lR /kaniko/ && \
+    pwd -LP && ls -lR 
+#    eval `/cvmfs/cms.cern.ch/common/scramv1 runtime -sh` && \
+#    git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit  && \
+#    cd HiggsAnalysis/CombinedLimit/   && \
+#    git fetch origin  && \
+#    git checkout v8.2.0  && \
+#    cd $CMSSW_BASE/src/ && \
+#    /cvmfs/cms.cern.ch/common/scramv1 b clean && \
+#    /cvmfs/cms.cern.ch/common/scramv1 b  && \
+#    eval `scramv1 runtime -sh` && \
+#    pip3 install --upgrade pip --user && \
+#    pip3 install flake8 --user && \
+#    pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 
 #RUN cmsenv
 #RUN git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
