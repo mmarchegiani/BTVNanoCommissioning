@@ -1,8 +1,9 @@
 FROM gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cmssw_10_2_21-slc7_amd64_gcc700:2020-09-22-ef834977
 
 #RUN cd /home/cmsusr/CMSSW_10_2_21/src/ && \
-RUN eval `/cvmfs/cms.cern.ch/common/scramv1 runtime -sh` && \
-    pwd -LP && ls && \
+RUN ls / && \
+    pwd -LP && ls -lR && \
+    eval `/cvmfs/cms.cern.ch/common/scramv1 runtime -sh` && \
     git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit  && \
     cd HiggsAnalysis/CombinedLimit/   && \
     git fetch origin  && \

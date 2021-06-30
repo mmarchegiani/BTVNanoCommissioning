@@ -1,6 +1,5 @@
 stages:
     - buildimages
-    - build
     - createPUfile
     - runCode
     - makePlots
@@ -30,14 +29,14 @@ build_image:
         #IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
         dockerfile: Dockerfile
 
-build_precombine:
+build_combine:
     stage: buildimages
     extends: .docker_build
+    tags:
+        - cvmfs
     variables:
         IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
         dockerfile: DockerfileCombine
-    tags:
-        - cvmfs
 
 #build_combine:
 #    stage: build
@@ -60,12 +59,11 @@ build_precombine:
 #        - pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 
 voms_proxy:
-    stage: build 
+    stage: buildimages 
     image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
     artifacts:
         paths:
             - proxy
-        expire_in: 1 day
     script:
         - mkdir -p ${HOME}/.globus
         - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
