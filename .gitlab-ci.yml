@@ -26,7 +26,8 @@ build_image:
     stage: buildimages
     extends: .docker_build
     variables:
-        IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+        IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:latest
+        #IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
         dockerfile: Dockerfile
 
 build_precombine:
@@ -43,13 +44,16 @@ build_combine:
     tags:
         - cvmfs
     script:
-        - cd /home/cmsusr/
-        - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit 
-        - cd HiggsAnalysis/CombinedLimit/  
+        - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git CombinedLimit 
+        - cd CombinedLimit/  
         - git fetch origin 
         - git checkout v8.2.0 
         - bash env_standalone.sh 
         - make
+    artifacts:
+        paths:
+            - CombinedLimit
+        expire_in: 1 day 
 
 voms_proxy:
     stage: build 
@@ -75,7 +79,8 @@ runPU:
     stage: createPUfile
     tags:
         - cvmfs
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: $CI_REGISTRY_IMAGE:latest
+    #image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - mkdir test
@@ -92,7 +97,7 @@ runcode:
     stage: runCode
     tags:
         - cvmfs
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: $CI_REGISTRY_IMAGE:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - pwd -LP
@@ -106,7 +111,7 @@ runplots:
     dependencies:
         - runcode
     stage: makePlots
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: $CI_REGISTRY_IMAGE:latest
     script:
         - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection msd100tau06 --test
     artifacts:
