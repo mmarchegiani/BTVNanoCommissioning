@@ -32,6 +32,8 @@ build_image:
 build_combine:
     stage: buildimages
     extends: .docker_build
+    image:
+        entrypoint: ["/home/cmsusr/"]
     tags:
         - cvmfs
     variables:
