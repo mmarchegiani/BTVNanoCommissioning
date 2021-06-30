@@ -6,9 +6,9 @@ stages:
     - makePlots
 
 variables:
-    inputFile : datasets/datasets_btag2018.json
-    coffeaFile : hists_fattag_flavor_mutag_2018.coffea7
-    year: 2018
+    inputFile : datasets/datasets_btag2017.json
+    coffeaFile : hists_fattag_flavor_mutag_2017.coffea7
+    year: 2017
 
 build_image:
     stage: build
@@ -73,7 +73,7 @@ runplots:
     stage: makePlots
     image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     script:
-        - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection basic --test
+        - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection msd100tau06 --test
     artifacts:
         paths:
             - plots

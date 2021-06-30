@@ -90,7 +90,7 @@ First we need to translate the coffea histograms into numpy arrays. For this in 
 ```
 python coffeaToPickle.py -i histograms/hists_fattag_pileupJEC_2017_WPcuts_v01.coffea7 --year 2017
 ```
-For the rest, migrate to the environment with combine. The script (scaleFactorComputation.py)[scaleFactorComputation.py] can create the datacard needed in combine and also run the `FitDiagnostics` step in combine. As example:
+For the rest, migrate to the environment with combine. The script [scaleFactorComputation.py](scaleFactorComputation.py) can create the datacard needed in combine and also run the `FitDiagnostics` step in combine. As example:
 ```
 python scaleFactorComputation.py --year 2017 --tpf histograms/hists_fattag_pileupJEC_2017_WPcuts_v01.pkl --selection msd100tau06DDB
 ```
