@@ -18,6 +18,22 @@ build_image:
     script:
         - ignore
 
+build_combine:
+    stage: build
+    variables:
+        TO: $CI_REGISTRY_IMAGE_combine:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+        DOCKER_FILE: DockerfileCombine
+    tags:
+        - cvmfs
+    script:
+        - cd /home/cmsusr/
+        - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
+        - cd HiggsAnalysis/CombinedLimit/
+        - git fetch origin 
+        - git checkout v8.2.0
+        - bash env_standalone.sh
+        - make 
+
 voms_proxy:
     stage: build 
     image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
