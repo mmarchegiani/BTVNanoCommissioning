@@ -17,6 +17,7 @@ variables:
         # Prepare Kaniko configuration file
         - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
         # Build and push the image from the Dockerfile at the root of the project.
+        - echo $CI_PROJECT_DIR
         - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/$dockerfile --destination $IMAGE_DESTINATION
         # Print the full registry path of the pushed image
         - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
@@ -32,8 +33,6 @@ build_image:
 build_combine:
     stage: buildimages
     extends: .docker_build
-    image:
-        entrypoint: ["/home/cmsusr/"]
     tags:
         - cvmfs
     variables:
