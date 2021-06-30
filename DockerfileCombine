@@ -3,7 +3,7 @@ FROM rootproject/root:6.22.02-centos7
 
 WORKDIR /home/cmsusr/
 
-RUN yum update -y 
+#RUN yum update -y 
 RUN yum install epel-release python3-pip -y
 RUN pip3 install --upgrade pip
 RUN pip3 install --no-cache-dir https://github.com/nsmith-/rhalphalib/archive/master.zip

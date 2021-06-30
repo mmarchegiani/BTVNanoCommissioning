@@ -23,19 +23,32 @@ variables:
 
 build_image:
     stage: build
+    extends: .docker_build
     variables:
-        TO: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    tags:
-        - docker-image-build
-    script:
-        - ignore
+        IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+        dockerfile: Dockerfile
 
-build_combine:
+build_precombine:
     stage: build
     extends: .docker_build
     variables:
         IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
         dockerfile: DockerfileCombine
+
+build_combine:
+    stage: build
+    dependencies: 
+        - build_precombine
+    tags:
+        - cvmfs
+    script:
+        - cd /home/cmsusr/
+        - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit 
+        - cd HiggsAnalysis/CombinedLimit/  
+        - git fetch origin 
+        - git checkout v8.2.0 
+        - bash env_standalone.sh 
+        - make
 
 voms_proxy:
     stage: build 
