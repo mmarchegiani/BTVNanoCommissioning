@@ -1,6 +1,5 @@
 stages:
     - build
-    - proxy
     - createPUfile
     - runCode
     - makePlots
@@ -20,7 +19,7 @@ build_image:
         - ignore
 
 voms_proxy:
-    stage: proxy
+    stage: build 
     image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
     artifacts:
         paths:
