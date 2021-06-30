@@ -57,6 +57,8 @@ build_combine:
         - /cvmfs/cms.cern.ch/common/scramv1 b clean
         - /cvmfs/cms.cern.ch/common/scramv1 b 
         - eval `scramv1 runtime -sh`
+        - pip3 install --upgrade pip --user
+        - pip3 install flake8 --user
         - pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 #    artifacts:
 #        paths:
