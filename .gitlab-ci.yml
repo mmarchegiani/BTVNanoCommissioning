@@ -25,6 +25,7 @@ voms_proxy:
     artifacts:
         paths:
             - proxy
+        expire_in: 1 day
     script:
         - mkdir -p ${HOME}/.globus
         - printf "${GRID_USERCERT}" | base64 -d > ${HOME}/.globus/usercert.pem
@@ -48,6 +49,7 @@ runPU:
         - mkdir test
         - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" --outputDir test --outputName testFile.coffea
     artifacts:
+        expire_in: 1 day
         paths:
             - test
 
@@ -64,6 +66,7 @@ runcode:
         - pwd -LP
         - python simplerunner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
     artifacts:
+        expire_in: 1 day
         paths:
             - histograms 
 
@@ -75,6 +78,7 @@ runplots:
     script:
         - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection msd100tau06 --test
     artifacts:
+        expire_in: 1 week
         paths:
             - plots
 
