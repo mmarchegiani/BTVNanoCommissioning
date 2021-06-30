@@ -30,40 +30,34 @@ build_image:
         #IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
         dockerfile: Dockerfile
 
-#build_precombine:
-#    stage: buildimages
-#    extends: .docker_build
-#    variables:
-#        IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
-#        dockerfile: DockerfileCombine
-
-build_combine:
-    stage: build
-    image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cmssw_10_2_21-slc7_amd64_gcc700:2020-09-22-ef834977
-    #    dependencies: 
-    #    - build_precombine
+build_precombine:
+    stage: buildimages
+    extends: .docker_build
+    variables:
+        IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
+        dockerfile: DockerfileCombine
     tags:
         - cvmfs
-    script:
-        - cd /home/cmsusr/CMSSW_10_2_21/src/
-        - eval `scramv1 runtime -sh`
-        - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit 
-        - cd HiggsAnalysis/CombinedLimit/  
-        - git fetch origin 
-        - git checkout v8.2.0 
-          #        - bash env_standalone.sh 
-          #- make
-        - cd $CMSSW_BASE/src/
-        - /cvmfs/cms.cern.ch/common/scramv1 b clean
-        - /cvmfs/cms.cern.ch/common/scramv1 b 
-        - eval `scramv1 runtime -sh`
-        - pip3 install --upgrade pip --user
-        - pip3 install flake8 --user
-        - pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
-#    artifacts:
-#        paths:
-#            - CombinedLimit
-#        expire_in: 1 day 
+
+#build_combine:
+#    stage: build
+#    image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cmssw_10_2_21-slc7_amd64_gcc700:2020-09-22-ef834977
+#    tags:
+#        - cvmfs
+#    script:
+#        - cd /home/cmsusr/CMSSW_10_2_21/src/
+#        - eval `scramv1 runtime -sh`
+#        - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit 
+#        - cd HiggsAnalysis/CombinedLimit/  
+#        - git fetch origin 
+#        - git checkout v8.2.0 
+#        - cd $CMSSW_BASE/src/
+#        - /cvmfs/cms.cern.ch/common/scramv1 b clean
+#        - /cvmfs/cms.cern.ch/common/scramv1 b 
+#        - eval `scramv1 runtime -sh`
+#        - pip3 install --upgrade pip --user
+#        - pip3 install flake8 --user
+#        - pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 
 voms_proxy:
     stage: build 
