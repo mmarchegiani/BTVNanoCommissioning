@@ -7,13 +7,13 @@ RUN cd /home/cmsusr/CMSSW_10_2_21/src/ && \
     cd HiggsAnalysis/CombinedLimit/   && \
     git fetch origin  && \
     git checkout v8.2.0  && \
-    cd $CMSSW_BASE/src/ 
-##    /cvmfs/cms.cern.ch/common/scramv1 b clean && \
-##    /cvmfs/cms.cern.ch/common/scramv1 b  && \
-##    eval `scramv1 runtime -sh` && \
-#    pip3 install --upgrade pip --user && \
-#    pip3 install flake8 --user && \
-#    pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
+    cd $CMSSW_BASE/src/  && \
+    /cvmfs/cms.cern.ch/common/scramv1 b clean && \
+    /cvmfs/cms.cern.ch/common/scramv1 b   && \
+    eval `scramv1 runtime -sh`
+RUN pip3 install --upgrade pip --user && \
+    pip3 install flake8 --user && \
+    pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 
 #RUN cmsenv
 #RUN git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit && \
