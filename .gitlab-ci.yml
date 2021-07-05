@@ -40,6 +40,17 @@ build_combine:
         IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
         dockerfile: DockerfileCombine
 
+setrhalphalib:
+    stage: createPUfile
+    dependencies: 
+        - build_combine 
+    image: $CI_REGISTRY_IMAGE:combine
+    tags: 
+        - cvmfs
+    script:
+        - RUN pip install flake8 --user
+        - pip install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
+
 voms_proxy:
     stage: buildimages 
     image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
@@ -117,9 +128,10 @@ createPickleFile:
 
 runCombine:
     dependencies:
+        - setrhalphalib
         - createPickleFile
     stage: combine
-    image: $CI_REGISTRY_IMAGE:combine
+    #image: $CI_REGISTRY_IMAGE:combine
     script:
         - python scaleFactorComputation.py --year '${year}' --tpf pickleFiles/"${pickleFile}" --selection msd100tau06DDB
     artifacts:
