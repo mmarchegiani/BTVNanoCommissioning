@@ -23,13 +23,13 @@ variables:
         # Print the full registry path of the pushed image
         - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
 
-build_image:
-    stage: buildimages
-    extends: .docker_build
-    variables:
-        IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:latest
-        #IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-        dockerfile: Dockerfile
+#build_image:
+#    stage: buildimages
+#    extends: .docker_build
+#    variables:
+#        IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:latest
+#        #IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+#        dockerfile: Dockerfile
 
 build_combine:
     stage: buildimages
@@ -48,7 +48,7 @@ setrhalphalib:
     tags: 
         - cvmfs
     script:
-        - RUN pip install flake8 --user
+        - pip install flake8 --user
         - pip install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 
 voms_proxy:
@@ -74,7 +74,7 @@ runPU:
     stage: createPUfile
     tags:
         - cvmfs
-    image: $CI_REGISTRY_IMAGE:latest
+    image: coffeateam/coffea-base:latest
     #image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
@@ -92,7 +92,8 @@ runcode:
     stage: runCode
     tags:
         - cvmfs
-    image: $CI_REGISTRY_IMAGE:latest
+    #image: $CI_REGISTRY_IMAGE:latest
+    image: coffeateam/coffea-base:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - pwd -LP
@@ -106,7 +107,8 @@ runplots:
     dependencies:
         - runcode
     stage: makePlots
-    image: $CI_REGISTRY_IMAGE:latest
+    image: coffeateam/coffea-base:latest
+    #image: $CI_REGISTRY_IMAGE:latest
     script:
         - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection msd100tau06 --test
     artifacts:
@@ -118,7 +120,8 @@ createPickleFile:
     dependencies:
         - runcode
     stage: makePlots
-    image: $CI_REGISTRY_IMAGE:latest
+    #image: $CI_REGISTRY_IMAGE:latest
+    image: coffeateam/coffea-base:latest
     script:
         - python coffeaToPickle.py -i ${PWD}/histograms/"${coffeaFile}" --year "${year}" --outputDir ${PWD}/pickleFiles/ -o "${pickleFile}"
     artifacts:
