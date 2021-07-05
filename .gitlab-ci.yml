@@ -3,10 +3,12 @@ stages:
     - createPUfile
     - runCode
     - makePlots
+    - combine
 
 variables:
     inputFile : datasets/datasets_btag2017.json
     coffeaFile : hists_fattag_flavor_mutag_2017.coffea7
+    pickleFile : hists_fattag_flavor_mutag_2017.pkl
     year: 2017
 
 .docker_build:
@@ -17,7 +19,6 @@ variables:
         # Prepare Kaniko configuration file
         - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
         # Build and push the image from the Dockerfile at the root of the project.
-        - echo $CI_PROJECT_DIR
         - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/$dockerfile --destination $IMAGE_DESTINATION
         # Print the full registry path of the pushed image
         - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
@@ -38,26 +39,6 @@ build_combine:
     variables:
         IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
         dockerfile: DockerfileCombine
-
-#build_combine:
-#    stage: build
-#    image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cmssw_10_2_21-slc7_amd64_gcc700:2020-09-22-ef834977
-#    tags:
-#        - cvmfs
-#    script:
-#        - cd /home/cmsusr/CMSSW_10_2_21/src/
-#        - eval `scramv1 runtime -sh`
-#        - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit 
-#        - cd HiggsAnalysis/CombinedLimit/  
-#        - git fetch origin 
-#        - git checkout v8.2.0 
-#        - cd $CMSSW_BASE/src/
-#        - /cvmfs/cms.cern.ch/common/scramv1 b clean
-#        - /cvmfs/cms.cern.ch/common/scramv1 b 
-#        - eval `scramv1 runtime -sh`
-#        - pip3 install --upgrade pip --user
-#        - pip3 install flake8 --user
-#        - pip3 install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 
 voms_proxy:
     stage: buildimages 
@@ -128,9 +109,21 @@ createPickleFile:
     stage: makePlots
     image: $CI_REGISTRY_IMAGE:latest
     script:
-        - python coffeaToPickle.py -i ${PWD}/histograms/"${coffeaFile}" --year "{year}" --outputDir ${PWD}/pickleFiles/
+        - python coffeaToPickle.py -i ${PWD}/histograms/"${coffeaFile}" --year "${year}" --outputDir ${PWD}/pickleFiles/ -o "${pickleFile}"
     artifacts:
         expire_in: 1 day
         paths:
             - pickleFiles
+
+runCombine:
+    dependencies:
+        - createPickleFile
+    stage: combine
+    image: $CI_REGISTRY_IMAGE:combine
+    script:
+        - python scaleFactorComputation.py --year '${year}' --tpf pickleFiles/"${pickleFile}" --selection msd100tau06DDB
+    artifacts:
+        expire_in: 1 week
+        paths:
+            - fitdir
 
