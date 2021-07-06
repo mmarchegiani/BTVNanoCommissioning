@@ -13,12 +13,17 @@ stages:
 - name: runcode
   dependencies: [runpu]
   scheduler:
-      scheduler_type: 'singlestep-stage'
+      scheduler_type: 'multistep-stage'
       parameters:
-          inputFile: {step: init, output: inputFile}
-          year: {step: init, output: year}
+          inputFile: {stages: init, output: inputFile, unwrap: true}
+          dataset: {stages: init, output: datasets, unwrap: true}
+          year: {stages: init, output: year, unwrap: true}
           workingdir: '$REANA_WORKSPACE/'
-          nTrueFile: {step: runpu, output: outputCoffea}
+          nTrueFile: {stages: runpu, output: outputCoffea}
+          outputFile: '{workdir}/coffeaFile.coffea7'
+      scatter:
+          method: zip
+          parameters: [dataset]
       step: {$ref: 'reana_workflows/steps.yaml#/runcode'}
 
 - name: makeplots
@@ -26,7 +31,7 @@ stages:
   scheduler:
       scheduler_type: 'singlestep-stage'
       parameters:
-          inputFile: {step: runcode, output: outputCoffea}
+          inputFile: {step: runcode, output: output_files, flatten: true}
           year: {step: init, output: year}
           workingdir: '$REANA_WORKSPACE/'
       step: {$ref: 'reana_workflows/steps.yaml#/makeplots'}

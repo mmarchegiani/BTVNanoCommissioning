@@ -12,9 +12,9 @@ import uproot
 from coffea.util import load, save
 from coffea import processor
 from coffea.nanoevents import PFNanoAODSchema
-from distributed import Client
-from dask_jobqueue import HTCondorCluster
-import socket
+#from distributed import Client
+#from dask_jobqueue import HTCondorCluster
+#import socket
 
 
 def validate(file):
@@ -139,37 +139,37 @@ if __name__ == '__main__':
                     'workers': args.workers}
     if args.executor.startswith('iterative'): _exec = processor.iterative_executor
     elif args.executor.startswith('futures'): _exec = processor.futures_executor
-    elif args.executor.startswith('dask/condor'):
-        _exec = processor.dask_executor
-        n_port = 8786
-        cluster = HTCondorCluster(
-                    cores=1,
-                    memory='2000MB',
-                    disk='1000MB',
-                    death_timeout = '60',
-                    nanny = False,
-                    scheduler_options={
-                        'port': n_port,
-                        'host': socket.gethostname()
-                        },
-                    job_extra={
-                        'log': 'dask_job_output.log',
-                        'output': 'dask_job_output.out',
-                        'error': 'dask_job_output.err',
-                        'should_transfer_files': 'Yes',
-                        'when_to_transfer_output': 'ON_EXIT',
-                        '+JobFlavour': '"tomorrow"',
-                        },
-                    extra = ['--worker-port {}'.format(n_port)]
-                )
-        cluster.scale(jobs=args.scaleout)
-        print(cluster.job_script())
-        client = Client(cluster)
-        _exec_args = {
-                    'schema': PFNanoAODSchema,
-                    'align_clusters' : True,
-                    'client': client
-                    }
+#    elif args.executor.startswith('dask/condor'):
+#        _exec = processor.dask_executor
+#        n_port = 8786
+#        cluster = HTCondorCluster(
+#                    cores=1,
+#                    memory='2000MB',
+#                    disk='1000MB',
+#                    death_timeout = '60',
+#                    nanny = False,
+#                    scheduler_options={
+#                        'port': n_port,
+#                        'host': socket.gethostname()
+#                        },
+#                    job_extra={
+#                        'log': 'dask_job_output.log',
+#                        'output': 'dask_job_output.out',
+#                        'error': 'dask_job_output.err',
+#                        'should_transfer_files': 'Yes',
+#                        'when_to_transfer_output': 'ON_EXIT',
+#                        '+JobFlavour': '"tomorrow"',
+#                        },
+#                    extra = ['--worker-port {}'.format(n_port)]
+#                )
+#        cluster.scale(jobs=args.scaleout)
+#        print(cluster.job_script())
+#        client = Client(cluster)
+#        _exec_args = {
+#                    'schema': PFNanoAODSchema,
+#                    'align_clusters' : True,
+#                    'client': client
+#                    }
 
     output = processor.run_uproot_job(sample_dict,
                                                 treename='Events',
