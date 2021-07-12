@@ -69,3 +69,28 @@ The output will be stored in the `correction_files` folder with the name like: `
 
 ### Jet energy corrections
 You need to download the tar files needed for the JECs from [this twiki](https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECdataMC), in the `correction_files/JEC` folder and properly set these names in the `jecTarFiles` of `runner.py` and in `JECversions` of the `utils.py` script.
+
+
+## Scale Factors
+
+### Installation
+
+There are known conflicts when using a `coffea` conda environment and [combine](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/). Try to keep two different environments. One to create the histograms in ``coffea`` and another to run `combine`. 
+
+To install combine, follow the instructions from their [documentation](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/#for-end-users-that-dont-need-to-commit-or-do-any-development). If you dont have `root` by default in your machine, you might need to install the version inside CMSSW. Otherwise you can use the standalone version.
+
+In addition, you need to download the [rhalphalib](https://github.com/nsmith-/rhalphalib) package
+```
+pip install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
+```
+
+### Create datacards for combine
+
+First we need to translate the coffea histograms into numpy arrays. For this in the coffea environment one can run the script: [coffeaToPickle.py](coffeaToPickle.py), which creates a pickle file with the inputs needed. As example:
+```
+python coffeaToPickle.py -i histograms/hists_fattag_pileupJEC_2017_WPcuts_v01.coffea7 --year 2017
+```
+For the rest, migrate to the environment with combine. The script [scaleFactorComputation.py](scaleFactorComputation.py) can create the datacard needed in combine and also run the `FitDiagnostics` step in combine. As example:
+```
+python scaleFactorComputation.py --year 2017 --tpf histograms/hists_fattag_pileupJEC_2017_WPcuts_v01.pkl --selection msd100tau06DDB
+```

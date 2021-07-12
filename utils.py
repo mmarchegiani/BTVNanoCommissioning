@@ -72,6 +72,7 @@ histogram_settings = {
         'fatjet_nsv2'         : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
         'fatjet_nmusj1'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
         'fatjet_nmusj2'       : {'binning' : {'n_or_arr' : 30,  'lo' : 0,      'hi' : 30},    'xlim' : {'xmin' : 0, 'xmax' : 10}},
+        'fatjet_jetproba'       : {'binning' : {'n_or_arr' : 50,  'lo' : 0,      'hi' : 2.5},    'xlim' : {'xmin' : 0, 'xmax' : 2.5}},
     }
 }
 

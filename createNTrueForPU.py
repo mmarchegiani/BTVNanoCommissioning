@@ -1,8 +1,3 @@
-#####################################
-##### This script sum the genWeights from nanoAOD
-##### To run: python computeGenWeights.py -d NAMEOFDATASET
-#####################################
-
 #!/usr/bin/env python
 import argparse, os, shutil, sys
 import numpy as np

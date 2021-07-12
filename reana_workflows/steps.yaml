@@ -10,8 +10,8 @@ runpu:
             ls 
     environment: 
         environment_type: 'docker-encapsulated'
-        #image: coffeateam/coffea-base
-        image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        image: coffeateam/coffea-base
+        #image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
         imagetag: latest
         resources:
             - voms_proxy: true
@@ -28,18 +28,19 @@ runcode:
             cd {workingdir}
             pwd -LP
             ls 
-            python runner.py --workflow fattag --executor futures --samples datasets/{inputFile}.json --output hists.coffea7 --year {year} --limit 5 --nTrueFile {nTrueFile} --outputDir {workingdir}
+            python simplerunner.py --workflow fattag --executor futures --samples datasets/{inputFile}.json --output {dataset}.coffea7 --year {year} --nTrueFile {nTrueFile} --outputDir {workingdir} --dataset {dataset} --limit 10
             ls 
     environment: 
         environment_type: 'docker-encapsulated'
-        image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        #image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        image: coffeateam/coffea-base
         imagetag: latest
         resources:
             - voms_proxy: true
     publisher:
-        publisher_type: interpolated-pub
-        publish:
-            outputCoffea: '{workingdir}/hists.coffea7'
+        publisher_type: 'fromglob-pub'
+        outputkey: output_files
+        globexpression: '{workingdir}/*coffea7'
 
 makeplots:
     process:
@@ -49,11 +50,12 @@ makeplots:
             cd {workingdir}
             pwd -LP
             ls 
-            python make_plots.py -i {inputFile} -o test --outputDir {workingdir} -d --year {year} --selection basic --test
+            python make_plots.py -i {inputFile} -o test --outputDir {workingdir} -d --year {year} --selection basic 
             ls 
     environment: 
         environment_type: 'docker-encapsulated'
-        image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        #image: gitlab-registry.cern.ch/algomez/btvnanocommissioning
+        image: coffeateam/coffea-base
         imagetag: latest
     publisher:
         publisher_type: interpolated-pub

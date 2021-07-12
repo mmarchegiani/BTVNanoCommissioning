@@ -1,26 +1,58 @@
 stages:
-    - build
-    - proxy
+    - buildimages
     - createPUfile
     - runCode
     - makePlots
+    - combine
 
 variables:
-    inputFile : datasets/datasets_btag2018.json
-    coffeaFile : hists_fattag_flavor_mutag_2018.coffea7
-    year: 2018
+    inputFile : datasets/datasets_btag2017.json
+    coffeaFile : hists_fattag_flavor_mutag_2017.coffea7
+    pickleFile : hists_fattag_flavor_mutag_2017.pkl
+    year: 2017
 
-build_image:
-    stage: build
-    variables:
-        TO: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    tags:
-        - docker-image-build
+.docker_build:
+    image:
+        name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
+        entrypoint: [""]
     script:
-        - ignore
+        # Prepare Kaniko configuration file
+        - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+        # Build and push the image from the Dockerfile at the root of the project.
+        - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/$dockerfile --destination $IMAGE_DESTINATION
+        # Print the full registry path of the pushed image
+        - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
+
+#build_image:
+#    stage: buildimages
+#    extends: .docker_build
+#    variables:
+#        IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:latest
+#        #IMAGE_DESTINATION: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+#        dockerfile: Dockerfile
+
+build_combine:
+    stage: buildimages
+    extends: .docker_build
+    tags:
+        - cvmfs
+    variables:
+        IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:combine
+        dockerfile: DockerfileCombine
+
+setrhalphalib:
+    stage: createPUfile
+    dependencies: 
+        - build_combine 
+    image: $CI_REGISTRY_IMAGE:combine
+    tags: 
+        - cvmfs
+    script:
+        - pip install flake8 --user
+        - pip install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
 
 voms_proxy:
-    stage: proxy
+    stage: buildimages 
     image: gitlab-registry.cern.ch/clange/grid-proxy-test:master
     artifacts:
         paths:
@@ -42,12 +74,14 @@ runPU:
     stage: createPUfile
     tags:
         - cvmfs
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: coffeateam/coffea-base:latest
+    #image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - mkdir test
         - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" --outputDir test --outputName testFile.coffea
     artifacts:
+        expire_in: 1 day
         paths:
             - test
 
@@ -58,12 +92,14 @@ runcode:
     stage: runCode
     tags:
         - cvmfs
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    #image: $CI_REGISTRY_IMAGE:latest
+    image: coffeateam/coffea-base:latest
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - pwd -LP
         - python simplerunner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
     artifacts:
+        expire_in: 1 day
         paths:
             - histograms 
 
@@ -71,10 +107,38 @@ runplots:
     dependencies:
         - runcode
     stage: makePlots
-    image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    image: coffeateam/coffea-base:latest
+    #image: $CI_REGISTRY_IMAGE:latest
     script:
-        - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection basic --test
+        - python make_plots_simple.py -i ${PWD}/histograms/"${coffeaFile}" --outputDir ${PWD}/plots/ -d --year "${year}" --selection msd100tau06 --test
     artifacts:
+        expire_in: 1 week
         paths:
             - plots
+
+createPickleFile:
+    dependencies:
+        - runcode
+    stage: makePlots
+    #image: $CI_REGISTRY_IMAGE:latest
+    image: coffeateam/coffea-base:latest
+    script:
+        - python coffeaToPickle.py -i ${PWD}/histograms/"${coffeaFile}" --year "${year}" --outputDir ${PWD}/pickleFiles/ -o "${pickleFile}"
+    artifacts:
+        expire_in: 1 day
+        paths:
+            - pickleFiles
+
+runCombine:
+    dependencies:
+        - setrhalphalib
+        - createPickleFile
+    stage: combine
+    #image: $CI_REGISTRY_IMAGE:combine
+    script:
+        - python scaleFactorComputation.py --year '${year}' --tpf pickleFiles/"${pickleFile}" --selection msd100tau06DDB
+    artifacts:
+        expire_in: 1 week
+        paths:
+            - fitdir
 
