@@ -9,6 +9,7 @@ from coffea import hist, processor, lookup_tools
 from coffea.util import load
 from coffea.jetmet_tools import FactorizedJetCorrector, JetCorrectionUncertainty
 from coffea.jetmet_tools import JECStack, CorrectedJetsFactory
+import correctionlib
 
 from lib.luminosity import rescale
 from lib.sv import get_nsv, get_sv_in_jet
@@ -247,6 +248,7 @@ class NanoProcessor(processor.ProcessorABC):
         # PU files
         self.puFile    = self.cfg['puFile']
         self.nTrueFile = self.cfg['nTrueFile']
+        self.puJSON    = self.cfg['puJSON']
 
     def append_mask(self):
         masks = list(self._mask_fatjets.keys())
@@ -400,7 +402,10 @@ class NanoProcessor(processor.ProcessorABC):
         corrections = {}
         if not isRealData:
             weights.add( 'genWeight', events.genWeight)
-            weights.add( 'pileup_weight', self.puReweight( self.puFile, self.nTrueFile, self._dataset )( events.Pileup.nPU )  )
+            if self._campaign.startswith('UL'):
+                puWeightsJSON = correctionlib.CorrectionSet.from_file(self.puFile)
+                weights.add( 'pileup_weight', puWeightsJSON[self.puJSON].evaluate(99., 'nominal') )
+            else: weights.add( 'pileup_weight', self.puReweight( self.puFile, self.nTrueFile, self._dataset )( events.Pileup.nPU )  )
 
         events.FatJet = self.applyJEC( events.FatJet, events.fixedGridRhoFastjetAll, events.caches[0], 'AK8PFPuppi', isRealData, JECversion )
 
@@ -587,7 +592,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         if self.checkOverlap:
             mask = self._final_mask[0]
-            self.checkOverlap = self.checkOverlap.replace('.txt', f'_{mask}.txt')            
+            self.checkOverlap = self.checkOverlap.replace('.txt', f'_{mask}.txt')
             run = accumulator['run'].value
             lumi = accumulator['lumi'].value
             event = accumulator['event'].value

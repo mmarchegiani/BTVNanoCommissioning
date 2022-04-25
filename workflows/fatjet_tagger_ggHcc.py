@@ -588,7 +588,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         if self.checkOverlap:
             mask = self._final_mask[0]
-            self.checkOverlap = self.checkOverlap.replace('.txt', f'_{mask}.txt')            
+            self.checkOverlap = self.checkOverlap.replace('.txt', f'_{mask}.txt')
             run = accumulator['run'].value
             lumi = accumulator['lumi'].value
             event = accumulator['event'].value

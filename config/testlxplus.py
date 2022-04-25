@@ -1,14 +1,14 @@
 cfg =  {
     # Dataset parameters
-    "dataset"  : "datasets/DAS/datasets_btag2016ULPreVFP.txt",
-    "json"     : "datasets/RunIISummer20UL16-PreVFP.json",
+    "dataset"  : "datasets/DAS/RunIISummer20UL17.txt",
+    "json"     : "datasets/RunIISummer20UL17.json",
     "storage_prefix" : "/pnfs/psi.ch/cms/trivcat/store/user/mmarcheg/BTVNanoCommissioning",
     "campaign" : "UL",
-    "year"     : "2016",
+    "year"     : "2017",
 
     # PU files https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/LUMI_puWeights_Run2_UL/
-    'puFile'  : '/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/LUM/2016preVFP_UL/puWeights.json.gz',
-    'puJSON'   : 'Collisions16_UltraLegacy_goldenJSON',
+    'puFile'  : '/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/LUM/2017_UL/puWeights.json.gz',
+    'puJSON'   : 'Collisions17_UltraLegacy_goldenJSON',
     'nTrueFile' : '',
 
     # JEC
@@ -16,8 +16,8 @@ cfg =  {
 
     # Input and output files
     "workflow" : "fatjet_tagger",
-    "input"    : "datasets/RunIISummer20UL16-PreVFP_local.json",
-    "output"   : "histograms/RunIISummer20UL16-PreVFP_limit2.coffea",
+    "input"    : "datasets/RunIISummer20UL17.json",
+    "output"   : "histograms/RunIISummer20UL17.coffea",
     "plots"    : "plots/test",
 
     # Executor parameters
@@ -29,7 +29,7 @@ cfg =  {
         "max"          : None,
         "skipbadfiles" : None,
         "voms"         : None,
-        "limit"        : 2,
+        "limit"        : 1,
     },
 
     # Processor parameters
