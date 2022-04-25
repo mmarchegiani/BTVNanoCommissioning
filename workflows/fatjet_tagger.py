@@ -1,5 +1,6 @@
 import os
 import tarfile
+import logging
 
 import numpy as np
 import awkward as ak
@@ -14,6 +15,8 @@ import correctionlib
 from lib.luminosity import rescale
 from lib.sv import get_nsv, get_sv_in_jet
 from parameters import JECversions, jecTarFiles, FinalMask, PtBinning, AK8Taggers, AK8TaggerWP
+
+uproot.open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
 
 class NanoProcessor(processor.ProcessorABC):
     # Define histograms
@@ -294,7 +297,7 @@ class NanoProcessor(processor.ProcessorABC):
         '''Based on https://github.com/andrzejnovak/coffeandbacon/blob/master/analysis/compile_corrections.py#L166-L192'''
 
         nTrueIntLoad = load(nTrueFile)
-        print([y for x,y in nTrueIntLoad[dataset].sum('dataset').values().items()])
+        logging.debug([y for x,y in nTrueIntLoad[dataset].sum('dataset').values().items()])
         nTrueInt = [y for x,y in nTrueIntLoad[dataset].sum('dataset').values().items()][0]  ## not sure is the best way
 
         with uproot.open(puFile) as file_pu:
@@ -318,16 +321,11 @@ class NanoProcessor(processor.ProcessorABC):
         ext.finalize()
         evaluator = ext.make_evaluator()
 
-        #print("available evaluator keys:")
-        #for key in evaluator.keys():
-        #    print("\t", key)
 
         jec_inputs = {name: evaluator[name] for name in jec_stack_names}
         corrector = FactorizedJetCorrector( **jec_inputs )
-        for i in jec_inputs: print(i,'\n',evaluator[i])
+        for i in jec_inputs: logging.debug(i,'\n',evaluator[i])
 
-        #print(dir(evaluator))
-        #print()
         jec_stack = JECStack(jec_inputs)
         name_map = jec_stack.blank_name_map
         name_map['JetPt'] = 'pt'
@@ -348,18 +346,12 @@ class NanoProcessor(processor.ProcessorABC):
 
         jet_factory = CorrectedJetsFactory(name_map, jec_stack)
         corrected_jets = jet_factory.build(jets, lazy_cache=events_cache)
-        #print()
-        #print('starting columns:',ak.fields(jets))
-        #print()
-
-        #print('untransformed pt ratios',jets.pt/jets.pt_raw)
-        #print('untransformed mass ratios',jets.mass/jets.mass_raw)
-
-        #print('transformed pt ratios',corrected_jets.pt/corrected_jets.pt_raw)
-        #print('transformed mass ratios',corrected_jets.mass/corrected_jets.mass_raw)
-
-        #print()
-        #print('transformed columns:', ak.fields(corrected_jets))
+        logging.debug('starting columns:',ak.fields(jets))
+        logging.debug('untransformed pt ratios',jets.pt/jets.pt_raw)
+        logging.debug('untransformed mass ratios',jets.mass/jets.mass_raw)
+        logging.debug('transformed pt ratios',corrected_jets.pt/corrected_jets.pt_raw)
+        logging.debug('transformed mass ratios',corrected_jets.mass/corrected_jets.mass_raw)
+        logging.debug('transformed columns:', ak.fields(corrected_jets))
         return corrected_jets
 
     def process(self, events):
@@ -421,8 +413,8 @@ class NanoProcessor(processor.ProcessorABC):
                 self.triggers = [trigger.replace('AK4', '') for trigger in self.triggers]
             if 'BTagMu_AK8Jet300_Mu5' not in events.HLT.fields:
                 self.triggers = [trigger.replace('AK8', '') for trigger in self.triggers]
-            #print("self.triggers", self.triggers)
-            #print("events.HLT.fields", [item for item in events.HLT.fields if 'BTagMu' in item])
+            #logging.debug("self.triggers", self.triggers)
+            #logging.debug("events.HLT.fields", [item for item in events.HLT.fields if 'BTagMu' in item])
         elif self._year == '2018':
             for (i, trigger) in enumerate(self.triggers):
                 if trigger.strip("HLT_") not in events.HLT.fields:
@@ -447,7 +439,7 @@ class NanoProcessor(processor.ProcessorABC):
 
         ## FatJet cuts
         events.FatJet = events.FatJet[(events.FatJet.pt > self._mask_fatjets['basic']['pt_cut']) & (abs(events.FatJet.eta) <= self._mask_fatjets['basic']['eta_cut']) & (events.FatJet.jetId > self._mask_fatjets['basic']['jetId_cut'])  & (ak.count(events.FatJet.subjets.pt, axis=2) >= 2) ]  ## subjet sel to crosscheck
-        #print(events['FatJetSVs'])
+        #logging.debug(events['FatJetSVs'])
 
         ## Event level variables
         eventVariables = {}
@@ -553,8 +545,8 @@ class NanoProcessor(processor.ProcessorABC):
         for histname, h in output.items():
             sel = [mask + histname.split(mask)[-1] for mask in self._mask_fatjets.keys() if mask in histname]
             if histname in self.muon_hists:
-                #print('array printout:', np.array(list(muonCollection.keys())))
-                #print('list printout:', np.array(list(muonCollection.keys()))[[k in histname for k in muonCollection.keys()]])
+                #logging.debug('array printout:', np.array(list(muonCollection.keys())))
+                #logging.debug('list printout:', np.array(list(muonCollection.keys()))[[k in histname for k in muonCollection.keys()]])
                 muonKey = np.array(list(muonCollection.keys()))[[k in histname for k in muonCollection.keys()]][0]
                 muon = muonCollection[muonKey]
                 for flav, mask in flavors.items():
@@ -596,7 +588,7 @@ class NanoProcessor(processor.ProcessorABC):
             run = accumulator['run'].value
             lumi = accumulator['lumi'].value
             event = accumulator['event'].value
-            #print(run)
+            #logging.debug(run)
             with open(self.checkOverlap, 'w') as file:
                 for (iev,r) in enumerate(run):
                     if r==1:
@@ -604,6 +596,6 @@ class NanoProcessor(processor.ProcessorABC):
                     else:
                         file.write(f'{int(run[iev])}:{int(lumi[iev])}:{int(event[iev])}\n')
             file.close()
-            print(f"Saving run:lumi:event to {self.checkOverlap}")
+            logging.debug(f"Saving run:lumi:event to {self.checkOverlap}")
 
         return accumulator

@@ -9,6 +9,7 @@ cfg =  {
     # PU files https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/LUMI_puWeights_Run2_UL/
     'puFile'  : '/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/LUM/2016preVFP_UL/puWeights.json.gz',
     'puJSON'   : 'Collisions16_UltraLegacy_goldenJSON',
+    'nTrueFile' : '',   # for backcompatibility with EOY
 
     # JEC
     "JECfolder": "correction_files/tmp",

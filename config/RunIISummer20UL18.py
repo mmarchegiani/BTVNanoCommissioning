@@ -6,9 +6,10 @@ cfg =  {
     "campaign" : "UL",
     "year"     : "2018",
 
-    # PU files
-    "puFile"   : "correction_files/UltraLegacy/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root",
-    "nTrueFile": "correction_files/nTrueInt_RunIISummer20UL18_FIXED_SV_local_2018.coffea",
+    # PU files https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/LUMI_puWeights_Run2_UL/
+    'puFile'  : '/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/LUM/2018_UL/puWeights.json.gz',
+    'puJSON'   : 'Collisions18_UltraLegacy_goldenJSON',
+    'nTrueFile' : '',   # for backcompatibility with EOY
 
     # JEC
     "JECfolder": "correction_files/tmp",
