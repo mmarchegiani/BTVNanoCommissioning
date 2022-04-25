@@ -1,7 +1,6 @@
 # BTVNanoCommissioning
 Repository for Commissioning studies in the BTV POG based on (custom) nanoAOD samples
 
-
 ## Structure
 Example worfkflow for ttbar is included. 
 
