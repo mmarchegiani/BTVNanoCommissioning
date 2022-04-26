@@ -396,7 +396,7 @@ class NanoProcessor(processor.ProcessorABC):
             weights.add( 'genWeight', events.genWeight)
             if self._campaign.startswith('UL'):
                 puWeightsJSON = correctionlib.CorrectionSet.from_file(self.puFile)
-                weights.add( 'pileup_weight', puWeightsJSON[self.puJSON].evaluate(events.Pileup.nPU, 'nominal') )
+                weights.add( 'pileup_weight', puWeightsJSON[self.puJSON].evaluate(events.Pileup.nPU.to_numpy(), 'nominal') )
             else: weights.add( 'pileup_weight', self.puReweight( self.puFile, self.nTrueFile, self._dataset )( events.Pileup.nPU )  )
 
         events.FatJet = self.applyJEC( events.FatJet, events.fixedGridRhoFastjetAll, events.caches[0], 'AK8PFPuppi', isRealData, JECversion )
