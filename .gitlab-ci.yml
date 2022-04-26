@@ -68,27 +68,27 @@ voms_proxy:
         - mkdir proxy
         - cp ${VOMSPROXY} proxy/x509_proxy
 
-runPU:
-    dependencies:
-        - voms_proxy
-    stage: createPUfile
-    tags:
-        - cvmfs
-    #image: coffeateam/coffea-base:latest
-    image: $CI_REGISTRY_IMAGE:coffea
-    script:
-        - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
-        - mkdir test
-        - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" --outputDir test --outputName testFile.coffea
-    artifacts:
-        expire_in: 1 day
-        paths:
-            - test
+#runPU:
+#    dependencies:
+#        - voms_proxy
+#    stage: createPUfile
+#    tags:
+#        - cvmfs
+#    #image: coffeateam/coffea-base:latest
+#    image: $CI_REGISTRY_IMAGE:coffea
+#    script:
+#        - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
+#        - mkdir test
+#        - python createNTrueForPU.py --samples "${inputFile}" --year "${year}" --outputDir test --outputName testFile.coffea
+#    artifacts:
+#        expire_in: 1 day
+#        paths:
+#            - test
 
 runcode:
     dependencies:
         - voms_proxy
-        - runPU
+#        - runPU
     stage: runCode
     tags:
         - cvmfs
@@ -97,7 +97,8 @@ runcode:
     script:
         - export X509_USER_PROXY=${PWD}/proxy/x509_proxy
         - pwd -LP
-        - python simplerunner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
+        #- python simplerunner.py --workflow fattag --executor futures --samples "${inputFile}" --output "${coffeaFile}" --year "${year}" --limit 5 --nTrueFile test/testFile.coffea
+        - python runner.py config/testlxplus.py 
     artifacts:
         expire_in: 1 day
         paths:
