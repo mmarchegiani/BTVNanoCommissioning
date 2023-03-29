@@ -1,22 +1,30 @@
+from copy import deepcopy
 from pocket_coffea.parameters.cuts.preselection_cuts import *
 from workflows.fatjet_base import fatjetBaseProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
 from pocket_coffea.parameters.histograms import *
 from pocket_coffea.lib.categorization import StandardSelection, CartesianSelection
-from config.fatjet_base.custom.cuts import twojets_presel, mutag_sel, get_ptmsd, get_nObj_minmsd, get_flavor
+from pocket_coffea.lib.columns_manager import ColOut
+from config.fatjet_base.custom.cuts import twojets_presel, mutag_sel, get_ptmsd, get_ptmsdtau, get_nObj_minmsd, get_flavor
 from config.fatjet_base.custom.functions import get_HLTsel
 from config.fatjet_base.custom.parameters.parameters import AK8Taggers
 
 common_cats = {
     "inclusive" : [passthrough],
-    "pt350msd40" : [get_ptmsd(350., 40.)],
     "pt450msd40" : [get_ptmsd(450., 40.)],
-    "pt600msd40" : [get_ptmsd(600., 40.)],
-    "pt800msd40" : [get_ptmsd(800., 40.)],
-    "pt350msd40_mutag" : [get_ptmsd(350., 40.), mutag_sel],
     "pt450msd40_mutag" : [get_ptmsd(450., 40.), mutag_sel],
-    "pt600msd40_mutag" : [get_ptmsd(600., 40.), mutag_sel],
-    "pt800msd40_mutag" : [get_ptmsd(800., 40.), mutag_sel],
+    "pt450msd40tau20" : [get_ptmsdtau(450., 40., 0.20)],
+    "pt450msd40tau20_mutag" : [get_ptmsdtau(450., 40., 0.20), mutag_sel],
+    "pt450msd40tau25" : [get_ptmsdtau(450., 40., 0.25)],
+    "pt450msd40tau25_mutag" : [get_ptmsdtau(450., 40., 0.25), mutag_sel],
+    "pt450msd40tau30" : [get_ptmsdtau(450., 40., 0.30)],
+    "pt450msd40tau30_mutag" : [get_ptmsdtau(450., 40., 0.30), mutag_sel],
+    "pt450msd40tau35" : [get_ptmsdtau(450., 40., 0.35)],
+    "pt450msd40tau35_mutag" : [get_ptmsdtau(450., 40., 0.35), mutag_sel],
+    "pt450msd40tau40" : [get_ptmsdtau(450., 40., 0.40)],
+    "pt450msd40tau40_mutag" : [get_ptmsdtau(450., 40., 0.40), mutag_sel],
+    "pt450msd40tau45" : [get_ptmsdtau(450., 40., 0.45)],
+    "pt450msd40tau45_mutag" : [get_ptmsdtau(450., 40., 0.45), mutag_sel],
 }
 
 samples = ["QCD_MuEnriched",
@@ -42,7 +50,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : fatjetBaseProcessor,
-    "output"   : "output/pocket_coffea/ggH_proxy/ggH_proxy_2018UL_flavorfix",
+    "output"   : "output/pocket_coffea/ggH_proxy/ggH_proxy_2018UL_tau21",
     "workflow_options" : {},
 
     "run_options" : {
@@ -165,12 +173,23 @@ cfg =  {
         ),
     },
 
-    "columns" : {}
+    "columns" : {
+        "common" : {
+            "inclusive": [
+                ColOut("FatJetGood", ["pt", "eta", "phi", "msoftdrop",
+                                    "tau21", "hadronFlavour", "nBHadrons", "nCHadrons",
+                                    "particleNetMD_Xbb_QCD", "particleNetMD_Xcc_QCD",
+                                    "btagDDBvLV2", "btagDDCvLV2"],
+                ),
+            ]
+        }
+    }
 
 }
 
 for tagger in AK8Taggers:
-    setting = default_axis_settings[f"fatjet_{tagger}"]
+    setting = deepcopy(default_axis_settings[f"fatjet_{tagger}"])
+    setting["coll"] = "FatJetGood"
     for nbins in [10, 20, 40]:
         setting["bins"] = nbins
         cfg["variables"][f"FatJetGood_{tagger}_{nbins}bins"] = HistConf(axes=[Axis(**setting)])
