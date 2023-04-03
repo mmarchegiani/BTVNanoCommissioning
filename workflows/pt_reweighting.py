@@ -12,16 +12,42 @@ import correctionlib.convert
 from workflows.fatjet_base import fatjetBaseProcessor
 from pocket_coffea.utils.configurator import Configurator
 
-from pocket_coffea.utils.plot_utils import dense_axes, get_axis_items, get_data_mc_ratio
-from pocket_coffea.parameters.custom.genweights.genweights import genweights_files
+def dense_axes(h):
+    '''Returns the list of dense axes of a histogram.'''
+    dense_axes = []
+    if type(h) == dict:
+        h = h[list(h.keys())[0]]
+    for ax in h.axes:
+        if not type(ax) in [hist.axis.StrCategory, hist.axis.IntCategory]:
+            dense_axes.append(ax)
+    return dense_axes
 
-pt_low = {
-    'inclusive' : 350.,
-    'pt350msd40' : 350.,
-    'pt350msd60' : 350.,
-    'pt350msd80' : 350.,
-    'pt350msd100' : 350.,
-}
+def stack_sum(stack):
+    '''Returns the sum histogram of a stack (`hist.stack.Stack`) of histograms.'''
+    if len(stack) == 1:
+        return stack[0]
+    else:
+        htot = stack[0]
+        for h in stack[1:]:
+            htot = htot + h
+        return htot
+
+def get_axis_items(h, axis_name):
+    axis = h.axes[axis_name]
+    return list(axis.value(range(axis.size)))
+
+def get_data_mc_ratio(h1, h2):
+    if type(h1) == hist.Stack:
+        h1 = stack_sum(h1)
+    if type(h2) == hist.Stack:
+        h2 = stack_sum(h2)
+    num = h1.values()
+    den = h2.values()
+    ratio = num / den
+    unc = np.sqrt(num) / den
+    unc[np.isnan(unc)] = np.inf
+
+    return ratio, unc
 
 def overwrite_check(outfile):
     path = outfile
@@ -37,22 +63,12 @@ def overwrite_check(outfile):
 class ptReweightProcessor(fatjetBaseProcessor):
     def __init__(self, cfg: Configurator):
         super().__init__(cfg)
-        self.histname_pt_1d = 'FatJetGood_pt_1'
-        self.histname_pt_2d = 'FatJetGood_pt_1_FatJetGood_pt_2'
-        self.histname_pt_eta_2d = 'FatJetGood_pt_1_FatJetGood_eta_1'
-        for histname in [self.histname_pt_1d, self.histname_pt_eta_2d]:
+        self.pt_eta_2d_maps = ['FatJetGood_pt_eta', 'FatJetGood_pt_eta_bineta0p40', 'FatJetGood_pt_eta_binpt20', 'FatJetGood_pt_eta_binpt20_bineta0p40']
+        for histname in self.pt_eta_2d_maps:
             if not histname in self.cfg.variables.keys():
                 raise Exception(f"'{histname}' is not present in the histogram keys.")
 
-    def pt_reweighting(self, accumulator, year, mode):
-        if mode == '1D':
-            histname = self.histname_pt_1d
-        elif mode == '2D':
-            histname = self.histname_pt_2d
-        elif mode == '2D_pt_eta':
-            histname = self.histname_pt_eta_2d
-        else:
-            raise Exception("pT reweighting mode not recognized. Available modes: '1D', '2D'")
+    def pt_reweighting(self, accumulator, year, histname):
         h = accumulator['variables'][histname]
         samples = h.keys()
         samples_data = list(filter(lambda d: 'DATA' in d, samples))
@@ -63,15 +79,11 @@ class ptReweightProcessor(fatjetBaseProcessor):
         axes = dense_axes(h_mc)
         categories = get_axis_items(h_mc, 'cat')
 
-        #corr_dict = defaultdict(float)
         ratio_dict = defaultdict(float)
 
         for cat in categories:
-            #slicing_mc = {'year': year, 'cat': cat}
             slicing_mc_nominal = {'year': year, 'cat': cat, 'variation': 'nominal'}
-            #dict_mc = {d: h[d][slicing_mc] for d in samples_mc}
             dict_mc_nominal = {d: h[d][slicing_mc_nominal] for d in samples_mc}
-            #stack_mc = hist.Stack.from_dict(dict_mc)
             stack_mc_nominal = hist.Stack.from_dict(dict_mc_nominal)
 
             if 'era' in h[samples_data[0]].axes.name:
@@ -86,13 +98,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
                 h_data = stack_data[0]
             ratio, unc = get_data_mc_ratio(stack_data, stack_mc_nominal)
             mod_ratio  = np.nan_to_num(ratio)
-            if cat not in pt_low.keys():
-                pt_low[cat] = 350.
-            if mode == '1D':
-                bins = axes[0].edges
-                mod_ratio[bins[:-1] < pt_low[cat]] = 1
-                mod_ratio[bins[:-1] > 1500] = 1
-            elif mode in ['2D', '2D_pt_eta']:
+            if histname in self.pt_eta_2d_maps:
                 mod_ratio[mod_ratio == 0.0] = 1
 
             ratio_dict.update({ cat : mod_ratio })
@@ -100,15 +106,8 @@ class ptReweightProcessor(fatjetBaseProcessor):
         axis_category = hist.axis.StrCategory(list(ratio_dict.keys()), name="cat")
         sfhist = hist.Hist(axis_category, *axes, data=np.stack(list(ratio_dict.values())))
         sfhist.label = "out"
-        if mode == '1D':
-            sfhist.name = f"pt_corr_{year}"
-            description = "Reweighting SF matching the leading fatjet pT MC distribution to data."
-        elif mode == '2D':
-            sfhist.name = f"pt_2D_corr_{year}"
-            description = "Reweighting SF matching the leading and subleading fatjet pT MC distribution to data."
-        elif mode == '2D_pt_eta':
-            sfhist.name = f"pt_eta_2D_corr_{year}"
-            description = "Reweighting SF matching the leading fatjet pT and eta MC distribution to data."
+        sfhist.name = f"pt_eta_2D_corr_{year}"
+        description = "Reweighting SF matching the leading fatjet pT and eta MC distribution to data."
         clibcorr = correctionlib.convert.from_histogram(sfhist)
         clibcorr.description = description
         cset = correctionlib.schemav2.CorrectionSet(
@@ -118,7 +117,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
         )
         rich.print(cset)
 
-        outfile_reweighting = os.path.join(self.cfg.output, f'pt_corr_{mode}_{year}.json')
+        outfile_reweighting = os.path.join(self.cfg.output, f'{histname}_{year}_reweighting.json')
         outfile_reweighting = overwrite_check(outfile_reweighting)
         print(f"Saving pt reweighting factors in {outfile_reweighting}")
         with open(outfile_reweighting, "w") as fout:
@@ -128,22 +127,11 @@ class ptReweightProcessor(fatjetBaseProcessor):
         cset = correctionlib.CorrectionSet.from_file(outfile_reweighting)
         print("inclusive:")
         pt_corr = cset[sfhist.name]
-        if mode == '1D':
-            pt1 = np.array([50, 100, 400, 500, 1000], dtype=float)
-            print("pt1 =", pt1)
-            print(pt_corr.evaluate('inclusive', pt1))
-        elif mode == '2D':
-            pt1 = np.array([50, 100, 400, 500, 1000], dtype=float)
-            pt2 = np.array([40, 75, 300, 400, 750], dtype=float)
-            print("pt1 =", pt1)
-            print("pt2 =", pt2)
-            print(pt_corr.evaluate('inclusive', pt1, pt2))
-        elif mode == '2D_pt_eta':
-            pt1  = np.array([50, 100, 400, 500, 1000], dtype=float)
-            eta1 = np.array([-2, -1, 0, 1, 2], dtype=float)
-            print("pt1 =", pt1)
-            print("eta1 =", eta1)
-            print(pt_corr.evaluate('inclusive', pt1, eta1))
+        pt  = np.array([50, 100, 400, 500, 1000], dtype=float)
+        eta = np.array([-2, -1, 0, 1, 2], dtype=float)
+        print("pt =", pt)
+        print("eta =", eta)
+        print(pt_corr.evaluate('inclusive', pt, eta))
 
     def postprocess(self, accumulator):
         '''
@@ -156,32 +144,8 @@ class ptReweightProcessor(fatjetBaseProcessor):
             raise Exception("Only one data-taking year can be processed at a time.")
         else:
             year = years[0]
-        genweights_dict = load(genweights_files[year])['sum_genweights']
 
-        scale_genweight = {}
-
-        for sample in self._totalSamplesSet:
-            if (not sample.startswith('DATA')) & (sample not in genweights_dict):
-                continue
-            scale_genweight[sample] = (
-                1
-                if sample.startswith('DATA')  # BEAWARE OF THIS HARDCODING
-                else 1.0 / genweights_dict[sample]
-            )
-            # correct also the sumw (sum of weighted events) accumulator
-            for cat in self._categories:
-                if sample in accumulator["sumw"][cat]:
-                    accumulator["sumw"][cat][sample] *= scale_genweight[sample]
-
-        for var, hists in accumulator["variables"].items():
-            # Rescale only histogram without no_weights option
-            if self.cfg.variables[var].no_weights:
-                continue
-            for sample, h in hists.items():
-                h *= scale_genweight[sample]
-        accumulator["scale_genweight"] = scale_genweight
-
-        for mode in ['1D', '2D', '2D_pt_eta']:
-            self.pt_reweighting(accumulator=accumulator, year=year, mode=mode)
+        for histname in self.pt_eta_2d_maps:
+            self.pt_reweighting(accumulator=accumulator, year=year, histname=histname)
 
         return accumulator

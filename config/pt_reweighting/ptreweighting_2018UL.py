@@ -2,24 +2,40 @@ from pocket_coffea.parameters.cuts.preselection_cuts import *
 from workflows.pt_reweighting import ptReweightProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
 from pocket_coffea.parameters.histograms import *
-from pocket_coffea.parameters.btag import btag_variations
 from pocket_coffea.lib.weights_manager import WeightCustom
-from config.fatjet_base.custom.cuts import mutag_presel, get_ptbin, get_ptmsd, get_nObj_minmsd, get_flavor
-from config.fatjet_base.custom.functions import get_inclusive_wp, get_HLTsel
+from config.fatjet_base.custom.cuts import twojets_presel, mutag_sel, get_ptmsd, get_ptmsdtau, get_nObj_minmsd, get_flavor
+from config.fatjet_base.custom.functions import get_HLTsel
 import numpy as np
 
-from parameters import PtBinning, AK8TaggerWP
-PtBinning = PtBinning['UL']['2018']
-wp = AK8TaggerWP['UL']['2018']
+common_cats = {
+    "inclusive" : [passthrough],
+    "pt450msd40" : [get_ptmsd(450., 40.)],
+    "pt450msd40_mutag" : [get_ptmsd(450., 40.), mutag_sel],
+    "pt450msd40tau20" : [get_ptmsdtau(450., 40., 0.20)],
+    "pt450msd40tau20_mutag" : [get_ptmsdtau(450., 40., 0.20), mutag_sel],
+    "pt450msd40tau25" : [get_ptmsdtau(450., 40., 0.25)],
+    "pt450msd40tau25_mutag" : [get_ptmsdtau(450., 40., 0.25), mutag_sel],
+    "pt450msd40tau30" : [get_ptmsdtau(450., 40., 0.30)],
+    "pt450msd40tau30_mutag" : [get_ptmsdtau(450., 40., 0.30), mutag_sel],
+    "pt450msd40tau35" : [get_ptmsdtau(450., 40., 0.35)],
+    "pt450msd40tau35_mutag" : [get_ptmsdtau(450., 40., 0.35), mutag_sel],
+    "pt450msd40tau40" : [get_ptmsdtau(450., 40., 0.40)],
+    "pt450msd40tau40_mutag" : [get_ptmsdtau(450., 40., 0.40), mutag_sel],
+    "pt450msd40tau45" : [get_ptmsdtau(450., 40., 0.45)],
+    "pt450msd40tau45_mutag" : [get_ptmsdtau(450., 40., 0.45), mutag_sel],
+    "pt450msd40tau50" : [get_ptmsdtau(450., 40., 0.50)],
+    "pt450msd40tau50_mutag" : [get_ptmsdtau(450., 40., 0.50), mutag_sel],
+    "pt450msd40tau55" : [get_ptmsdtau(450., 40., 0.55)],
+    "pt450msd40tau55_mutag" : [get_ptmsdtau(450., 40., 0.55), mutag_sel],
+    "pt450msd40tau60" : [get_ptmsdtau(450., 40., 0.60)],
+    "pt450msd40tau60_mutag" : [get_ptmsdtau(450., 40., 0.60), mutag_sel],
+}
 
+samples = ["QCD_MuEnriched",
+           "VJets",
+           "DATA"
+           ]
 
-samples = ["QCD_Pt-170to300",
-           "QCD_Pt-300to470",
-           "QCD_Pt-470to600",
-           "QCD_Pt-600to800",
-           "QCD_Pt-800to1000",
-           "QCD_Pt-1000toInf",
-           "DATA"]
 subsamples = {}
 for s in filter(lambda x: 'DATA' not in x, samples):
     subsamples[s] = {f"{s}_{f}" : [get_flavor(f)] for f in ['l', 'c', 'b', 'cc', 'bb']}
@@ -34,21 +50,22 @@ cfg =  {
         },
         "subsamples": subsamples
     },
+    
 
     # Input and output files
     "workflow" : ptReweightProcessor,
-    "output"   : "output/commissioning/pt_reweighting/pt_reweighting_2d_pt_eta_2018UL",
+    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_reweighting_2018UL_twojets",
     "workflow_options" : {},
 
     "run_options" : {
         "executor"       : "dask/slurm",
         "workers"        : 1,
-        "scaleout"       : 100,
-        "queue"          : "short",
-        "walltime"       : "0:10:00",
-        "mem_per_worker" : "2GB", # GB
+        "scaleout"       : 200,
+        "queue"          : "standard",
+        "walltime"       : "12:00:00",
+        "mem_per_worker" : "12GB", # GB
         "exclusive"      : False,
-        "chunk"          : 20000,
+        "chunk"          : 100000,
         "retries"        : 50,
         "treereduction"  : 10,
         "max"            : None,
@@ -62,19 +79,12 @@ cfg =  {
     # Cuts and plots settings
     "finalstate" : "mutag",
     "skim": [get_nObj_min(1, 200., "FatJet"),
-             # TO BE CHECKED
              get_nObj_minmsd(1, 30., "FatJet"),
              get_nObj_min(2, 3., "Muon"),
              get_HLTsel("mutag")],
-    "save_skimmed_files": None,
-    "preselections" : [mutag_presel],
-    "categories": {
-        "inclusive" : [passthrough],
-        "pt350msd40" : [get_ptmsd(350., 40.)],
-        "pt350msd60" : [get_ptmsd(350., 60.)],
-        "pt350msd80" : [get_ptmsd(350., 80.)],
-        "pt350msd100" : [get_ptmsd(350., 100.)],
-    },
+    "save_skimmed_files" : None,
+    "preselections" : [twojets_presel],
+    "categories": common_cats,
 
     "weights": {
         "common": {
@@ -98,27 +108,29 @@ cfg =  {
         "bysample": {
         }    
         },
-        "shape": {
-            "common":{
-                "inclusive": [ ]
-            }
-        }
+        
     },
 
    "variables":
     {
         **fatjet_hists(coll="FatJetGood"),
-        **fatjet_hists(coll="FatJetGood", pos=0),
         **sv_hists(coll="events"),
-        **sv_hists(coll="events", pos=0),
         **count_hist(name="nFatJets", coll="FatJetGood",bins=10, start=0, stop=10),
-        "FatJetGood_pt_1_FatJetGood_pt_2": HistConf(
-            [ Axis(name="FatJetGood_pt_1", coll="FatJetGood", field="pt", pos=0, label=r"Leading FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
-              Axis(name="FatJetGood_pt_2", coll="FatJetGood", field="pt", pos=1, label=r"Subleading FatJet $p_{T}$ [GeV]", bins=75, start=0, stop=1500) ]
+        "FatJetGood_pt_eta": HistConf(
+            [ Axis(name="FatJetGood_pt", coll="FatJetGood", field="pt", label=r"Leading FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
+              Axis(name="FatJetGood_eta", coll="FatJetGood", field="eta", label=r"Leading FatJet $\eta$", bins=40, start=-4, stop=4) ]
         ),
-        "FatJetGood_pt_1_FatJetGood_eta_1": HistConf(
-            [ Axis(name="FatJetGood_pt_1", coll="FatJetGood", field="pt", pos=0, label=r"Leading FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
-              Axis(name="FatJetGood_eta_1", coll="FatJetGood", field="eta", pos=0, label=r"Leading FatJet $\eta$", bins=40, start=-4, stop=4) ]
+        "FatJetGood_pt_eta_bineta0p40": HistConf(
+            [ Axis(name="FatJetGood_pt", coll="FatJetGood", field="pt", label=r"Leading FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
+              Axis(name="FatJetGood_eta", coll="FatJetGood", field="eta", label=r"Leading FatJet $\eta$", bins=20, start=-4, stop=4) ]
+        ),
+        "FatJetGood_pt_eta_binpt20": HistConf(
+            [ Axis(name="FatJetGood_pt", coll="FatJetGood", field="pt", label=r"Leading FatJet $p_{T}$ [GeV]", bins=75, start=0, stop=1500),
+              Axis(name="FatJetGood_eta", coll="FatJetGood", field="eta", label=r"Leading FatJet $\eta$", bins=40, start=-4, stop=4) ]
+        ),
+        "FatJetGood_pt_eta_binpt20_bineta0p40": HistConf(
+            [ Axis(name="FatJetGood_pt", coll="FatJetGood", field="pt", label=r"Leading FatJet $p_{T}$ [GeV]", bins=75, start=0, stop=1500),
+              Axis(name="FatJetGood_eta", coll="FatJetGood", field="eta", label=r"Leading FatJet $\eta$", bins=20, start=-4, stop=4) ]
         ),
     },
 
