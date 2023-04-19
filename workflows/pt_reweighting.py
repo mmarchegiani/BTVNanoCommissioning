@@ -36,15 +36,18 @@ def get_axis_items(h, axis_name):
     axis = h.axes[axis_name]
     return list(axis.value(range(axis.size)))
 
-def get_data_mc_ratio(h1, h2):
+def get_data_mc_ratio(h1, h2, h_diff):
     if type(h1) == hist.Stack:
         h1 = stack_sum(h1)
     if type(h2) == hist.Stack:
         h2 = stack_sum(h2)
+    if type(h_diff) == hist.Stack:
+        h_diff = stack_sum(h_diff)
     num = h1.values()
     den = h2.values()
-    ratio = num / den
-    unc = np.sqrt(num) / den
+    diff = h_diff.values()
+    ratio = (num - diff) / den
+    unc = np.sqrt(num - diff) / den
     unc[np.isnan(unc)] = np.inf
 
     return ratio, unc
@@ -64,7 +67,8 @@ class ptReweightProcessor(fatjetBaseProcessor):
     def __init__(self, cfg: Configurator):
         super().__init__(cfg)
         self.pt_eta_2d_maps = ['FatJetGood_pt_eta', 'FatJetGood_pt_eta_bineta0p40', 'FatJetGood_pt_eta_binpt20', 'FatJetGood_pt_eta_binpt20_bineta0p40']
-        for histname in self.pt_eta_2d_maps:
+        self.pt_eta_tau21_3d_maps = ['FatJetGood_pt_eta_tau21']
+        for histname in self.pt_eta_2d_maps + self.pt_eta_tau21_3d_maps:
             if not histname in self.cfg.variables.keys():
                 raise Exception(f"'{histname}' is not present in the histogram keys.")
 
@@ -73,18 +77,22 @@ class ptReweightProcessor(fatjetBaseProcessor):
         samples = h.keys()
         samples_data = list(filter(lambda d: 'DATA' in d, samples))
         samples_mc = list(filter(lambda d: 'DATA' not in d, samples))
+        samples_qcd = list(filter(lambda d: 'QCD' in d, samples_mc))
+        samples_vjets = list(filter(lambda d: 'VJets' in d, samples_mc))
 
-        h_mc = h[samples_mc[0]]
+        h_qcd = h[samples_qcd[0]]
 
-        axes = dense_axes(h_mc)
-        categories = get_axis_items(h_mc, 'cat')
+        axes = dense_axes(h_qcd)
+        categories = get_axis_items(h_qcd, 'cat')
 
         ratio_dict = defaultdict(float)
 
         for cat in categories:
             slicing_mc_nominal = {'year': year, 'cat': cat, 'variation': 'nominal'}
-            dict_mc_nominal = {d: h[d][slicing_mc_nominal] for d in samples_mc}
-            stack_mc_nominal = hist.Stack.from_dict(dict_mc_nominal)
+            dict_qcd_nominal = {d: h[d][slicing_mc_nominal] for d in samples_qcd}
+            dict_vjets_nominal = {d: h[d][slicing_mc_nominal] for d in samples_vjets}
+            stack_qcd_nominal = hist.Stack.from_dict(dict_qcd_nominal)
+            stack_vjets_nominal = hist.Stack.from_dict(dict_vjets_nominal)
 
             if 'era' in h[samples_data[0]].axes.name:
                 slicing_data = {'year': year, 'cat': cat, 'era': sum}
@@ -96,7 +104,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
                 raise NotImplementedError
             else:
                 h_data = stack_data[0]
-            ratio, unc = get_data_mc_ratio(stack_data, stack_mc_nominal)
+            ratio, unc = get_data_mc_ratio(stack_data, stack_qcd_nominal, stack_vjets_nominal)
             mod_ratio  = np.nan_to_num(ratio)
             if histname in self.pt_eta_2d_maps:
                 mod_ratio[mod_ratio == 0.0] = 1
@@ -106,7 +114,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
         axis_category = hist.axis.StrCategory(list(ratio_dict.keys()), name="cat")
         sfhist = hist.Hist(axis_category, *axes, data=np.stack(list(ratio_dict.values())))
         sfhist.label = "out"
-        sfhist.name = f"pt_eta_2D_corr_{year}"
+        sfhist.name = f"{histname}_corr_{year}"
         description = "Reweighting SF matching the leading fatjet pT and eta MC distribution to data."
         clibcorr = correctionlib.convert.from_histogram(sfhist)
         clibcorr.description = description
@@ -131,7 +139,14 @@ class ptReweightProcessor(fatjetBaseProcessor):
         eta = np.array([-2, -1, 0, 1, 2], dtype=float)
         print("pt =", pt)
         print("eta =", eta)
-        print(pt_corr.evaluate('inclusive', pt, eta))
+        if histname in self.pt_eta_2d_maps:
+            args = (pt, eta)
+
+        elif histname in self.pt_eta_tau21_3d_maps:
+            tau21 = np.array([0.1, 0.35, 0.65, 0.8, 0.9], dtype=float)
+            print("tau21 =", tau21)
+            args = (pt, eta, tau21)
+        print(pt_corr.evaluate('inclusive', *args))
 
     def postprocess(self, accumulator):
         '''
@@ -145,7 +160,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
         else:
             year = years[0]
 
-        for histname in self.pt_eta_2d_maps:
+        for histname in self.pt_eta_2d_maps + self.pt_eta_tau21_3d_maps:
             self.pt_reweighting(accumulator=accumulator, year=year, histname=histname)
 
         return accumulator
