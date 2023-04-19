@@ -2,23 +2,19 @@ from pocket_coffea.parameters.cuts.preselection_cuts import *
 from workflows.fatjet_base import fatjetBaseProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
 from pocket_coffea.parameters.histograms import *
-from pocket_coffea.parameters.btag import btag_variations
-from pocket_coffea.lib.weights_manager import WeightCustom
-from pocket_coffea.lib.cartesian_categories import CartesianSelection, MultiCut
-from pocket_coffea.parameters.custom.cuts import mutag_presel, get_ptbin, get_ptmsd, get_nObj_minmsd, get_flavor
-from pocket_coffea.parameters.custom.functions import get_inclusive_wp, get_HLTsel
-from pocket_coffea.parameters.custom.parameters import PtBinning, AK8TaggerWP, AK8Taggers
-import numpy as np
+from pocket_coffea.lib.categorization import CartesianSelection, MultiCut
+from config.fatjet_base.custom.cuts import twojets_presel_pt250msd40, mutag_sel, get_ptmsd, get_nObj_minmsd, get_flavor, get_ptbin
+from config.fatjet_base.custom.functions import get_HLTsel, get_inclusive_wp
+from parameters import PtBinning, AK8TaggerWP, AK8Taggers
 
 PtBinning = PtBinning['UL']['2018']
 wps = AK8TaggerWP['UL']['2018']
+msd = 40.
 
 common_cats = {
-    "inclusive" : passthrough,
-    "pt350msd40" : get_ptmsd(350., 40.),
-    "pt350msd40_ptreweight" : get_ptmsd(350., 40.),
-    "pt450msd40" : get_ptmsd(450., 40.),
-    "pt450msd40_ptreweight" : get_ptmsd(450., 40.),
+    "inclusive" : [passthrough],
+    "pt350msd40_mutag" : [get_ptmsd(350., msd), mutag_sel],
+    "pt450msd40_mutag" : [get_ptmsd(450., msd), mutag_sel],
 }
 
 cuts_pt = []
@@ -32,9 +28,12 @@ for tagger in AK8Taggers:
     for wp in ["L", "M", "H"]:
         for region in ["pass", "fail"]:
             cuts_tagger.append(get_inclusive_wp(tagger, wps[tagger][wp], region))
-            cuts_names_tagger.append(f"msd40{tagger}{region}{wp}wp")
+            cuts_names_tagger.append(f"msd{int(msd)}{tagger}{region}{wp}wp")
 
 multicuts = [
+    MultiCut(name="mutag",
+             cuts=[passthrough, mutag_sel],
+             cuts_names=["NOmutag", "mutag"]),
     MultiCut(name="tagger",
              cuts=cuts_tagger,
              cuts_names=cuts_names_tagger),
@@ -43,12 +42,8 @@ multicuts = [
              cuts_names=cuts_names_pt),
 ]
 
-samples = ["QCD_Pt-170to300",
-           "QCD_Pt-300to470",
-           "QCD_Pt-470to600",
-           "QCD_Pt-600to800",
-           "QCD_Pt-800to1000",
-           "QCD_Pt-1000toInf",
+samples = ["QCD_MuEnriched",
+           "VJets",
            "DATA"]
 subsamples = {}
 for s in filter(lambda x: 'DATA' not in x, samples):
@@ -64,12 +59,13 @@ cfg =  {
         },
         "subsamples": subsamples
     },
-    
 
     # Input and output files
     "workflow" : fatjetBaseProcessor,
-    "output"   : "output/pocket_coffea/templates/templates_2018UL",
-    "workflow_options" : {},
+    "output"   : "output/test/templates/templates_twojets_3d_reweighting_2018UL",
+    "workflow_options" : {
+        "histograms_to_reweigh" : [],
+        "reweighting_scheme"    : "ptetatau21"},
 
     "run_options" : {
         "executor"       : "dask/slurm",
@@ -97,7 +93,7 @@ cfg =  {
              get_nObj_min(2, 3., "Muon"),
              get_HLTsel("mutag")],
     "save_skimmed_files" : None,
-    "preselections" : [mutag_presel, get_ptmsd(250, 40)],
+    "preselections" : [twojets_presel_pt250msd40],
     "categories": CartesianSelection(multicuts=multicuts, common_cats=common_cats),
 
     "weights": {
@@ -131,32 +127,40 @@ cfg =  {
 
    "variables":
     {
-        **muon_hists(coll="MuonGood", pos=0),
-        **muon_hists(coll="MuonGood", pos=1),
-        #**jet_hists(coll="JetGood"),
-        #**jet_hists(coll="JetGood", pos=0),
-        #**fatjet_hists(coll="FatJetGood"),
-        **fatjet_hists(coll="FatJetGood", pos=0),
-        #**sv_hists(coll="events"),
-        **sv_hists(coll="events", pos=0),
-        #**count_hist(name="nElectronGood", coll="ElectronGood",bins=10, start=0, stop=10),
-        **count_hist(name="nMuonGood", coll="MuonGood",bins=10, start=0, stop=10),
-        #**count_hist(name="nJets", coll="JetGood",bins=10, start=0, stop=10),
-        **count_hist(name="nFatJets", coll="FatJetGood",bins=10, start=0, stop=10),
-        **count_hist(name="nSV", coll="SV",bins=10, start=0, stop=10),
-        "nmusj_fatjet1": HistConf(
-            [ Axis(coll="events", field="nmusj_fatjet1", label=r"$N_{\mu, J1}$", bins=10, start=0, stop=10) ]
+        **muon_hists(coll="MuonGoodMatchedToFatJetGood"),
+        **fatjet_hists(coll="FatJetGood"),
+        **sv_hists(coll="events"),
+        "nMuonGoodMatchedToFatJetGood": HistConf(
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToFatJetGood", label=r"$N_{\mu, AK8}$", bins=4, start=0, stop=4) ]
         ),
-        #"nmusj_fatjet2": HistConf(
-        #    [ Axis(coll="events", field="nmusj_fatjet2", label=r"$N_{\mu, J2}$", bins=10, start=0, stop=10) ]
+        "nMuonGoodMatchedToLeadingSubJet": HistConf(
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToLeadingSubJet", label=r"$N_{\mu, sj1}$", bins=4, start=0, stop=4) ]
+        ),
+        "nMuonGoodMatchedToSubleadingSubJet": HistConf(
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToSubleadingSubJet", label=r"$N_{\mu, sj2}$", bins=4, start=0, stop=4) ]
+        ),
+        "nMuonGoodMatchedUniquelyToLeadingSubJet": HistConf(
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedUniquelyToLeadingSubJet", label=r"$N_{\mu, sj1}$", bins=4, start=0, stop=4) ]
+        ),
+        "nMuonGoodMatchedUniquelyToSubleadingSubJet": HistConf(
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedUniquelyToSubleadingSubJet", label=r"$N_{\mu, sj2}$", bins=4, start=0, stop=4) ]
+        ),
+        #"dimuon_pt": HistConf(
+        #    [ Axis(coll="dimuon", field="pt", label=r"Di-muon $p_{T}$ [GeV]", bins=50, start=0, stop=200) ]
         #),
+        **count_hist(name="nMuonGood", coll="MuonGood",bins=5, start=0, stop=5),
+        **count_hist(name="nFatJets", coll="FatJetGood",bins=5, start=0, stop=5),
+        **count_hist(name="nSV", coll="SV",bins=10, start=0, stop=10),
+        "FatJetGood_tau21_logsumcorrmass": HistConf(
+            [ Axis(coll="FatJetGood", field="logsumcorrmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=43, start=-2.6, stop=6),
+              Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", bins=20, start=0, stop=1) ]
+        ),
     },
 
     "columns" : {}
 
 }
 
-# Here we update the weights dictionary such that 3 cross-check categories are not pt-reweighted
-categories = cfg["categories"].categories
-categories_to_reweight = [ cat for cat in categories if cat not in ["inclusive", "pt350msd40", "pt450msd40"] ]
-cfg["weights"]["common"]["bycategory"] = { cat : ["pt_reweighting"] for cat in categories_to_reweight}
+# Here we update the dictionary of the histograms to reweigh such that
+# only the histograms with the same shape as the FatJetGood collection are reweighed
+cfg["workflow_options"]["histograms_to_reweigh"] = list(cfg["variables"].keys())
