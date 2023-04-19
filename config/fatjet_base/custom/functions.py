@@ -119,18 +119,17 @@ def mutag(events, params, **kwargs):
     # Select jets with a minimum number of subjets
     mask_nsubjet = (ak.count(events.FatJetGood.subjets.pt, axis=2) >= params["nsubjet"])
     # Select jets with a minimum number of mu-tagged subjets
-    mask_nmusj = ak.all(events.nmusj >= params["nmusj"], axis=2)
+    #mask_nmusj = ak.all(events.nmusj >= params["nmusj"], axis=2)
+    mask_nmusj = (events.nmusj1 >= params["nmusj"]) & (events.nmusj2 >= params["nmusj"])
     # Apply di-muon pT ratio cut on FatJets
     mask_ptratio = (events.dimuon.pt / events.FatJetGood.pt < params["dimuon_pt_ratio"])
-    mask_ptratio = ak.where( ak.is_none(mask_ptratio), ak.zeros_like(events.FatJetGood.pt, dtype=bool), mask_ptratio )
+    mask_ptratio = ak.where( ak.is_none(mask_ptratio, axis=1), False, mask_ptratio )
 
     njet_max = ak.max(ak.count(events.FatJetGood.pt, axis=1))
     mask_good_jets = ak.pad_none(ak.ones_like(events.FatJetGood.pt, dtype=bool), njet_max)
     for mask in [mask_nsubjet, mask_nmusj, mask_ptratio]:
         mask_good_jets = mask_good_jets & ak.pad_none(mask, njet_max)
     mask_good_jets = mask_good_jets[~ak.is_none(mask, axis=1)]
-
-    #breakpoint()
 
     return mask_good_jets
 
@@ -146,6 +145,9 @@ def ptbin(events, params, **kwargs):
     assert not ak.any(ak.is_none(mask, axis=1)), f"None in ptbin\n{events.nJetGood[ak.is_none(mask, axis=1)]}"
 
     return mask
+
+def ptbin_mutag(events, params, **kwargs):
+    return ptbin(events, params, **kwargs) & mutag(events, params, **kwargs)
 
 def msoftdrop(events, params, **kwargs):
     # Mask to select events with a fatjet with minimum softdrop mass and maximum tau21

@@ -2,7 +2,7 @@
 import awkward as ak
 import pocket_coffea.lib.cut_functions as cuts_f
 from pocket_coffea.lib.cut_definition import Cut
-from config.fatjet_base.custom.functions import twojets_ptmsd, mutag, ptbin, msoftdrop, ptmsd, ptmsdtau, min_nObj_minmsd, flavor_mask
+from config.fatjet_base.custom.functions import twojets_ptmsd, mutag, ptbin, ptbin_mutag, msoftdrop, ptmsd, ptmsdtau, min_nObj_minmsd, flavor_mask
 
 twojets_presel = Cut(
     name="twojets_ptmsd",
@@ -16,6 +16,18 @@ twojets_presel = Cut(
     function=twojets_ptmsd
 )
 
+twojets_presel_pt250msd40 = Cut(
+    name="twojets_ptmsd",
+    params={
+        "nmusj1" : 1,
+        "nmusj2" : 1,
+        "pt" : 250,
+        "msd" : 40,
+        #"dimuon_pt_ratio" : 0.6
+    },
+    function=twojets_ptmsd
+)
+
 mutag_sel = Cut(
     name="mutag",
     params={
@@ -23,6 +35,7 @@ mutag_sel = Cut(
         "nmusj" : 1,
         "dimuon_pt_ratio": 0.6
     },
+    collection="FatJetGood",
     function=mutag
 )
 
@@ -33,6 +46,21 @@ def get_ptbin(pt_low, pt_high, name=None):
         name=name,
         params= {"pt_low" : pt_low, "pt_high" : pt_high},
         function=ptbin,
+        collection="FatJetGood"
+    )
+
+def get_ptbin_mutag(pt_low, pt_high, name=None):
+    if name == None:
+        name = f"Pt-{pt_low}to{pt_high}"
+    return Cut(
+        name=name,
+        params= {"pt_low" : pt_low,
+                 "pt_high" : pt_high,
+                 "nsubjet" : 2,
+                 "nmusj" : 1,
+                 "dimuon_pt_ratio": 0.6
+        },
+        function=ptbin_mutag,
         collection="FatJetGood"
     )
 

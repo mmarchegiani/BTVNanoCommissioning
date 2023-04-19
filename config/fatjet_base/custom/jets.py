@@ -235,16 +235,11 @@ def jet_selection(events, Jet, finalstate):
 
     elif Jet == "FatJet":
         # Define the number of muons inside the subjet
-        nmusj_fatjet1 = get_nmu_in_subjet(events.FatJet, events.MuonGood, pos=0)
-        nmusj_fatjet2 = get_nmu_in_subjet(events.FatJet, events.MuonGood, pos=1)
-        nmusj = ak.concatenate( (ak.unflatten(nmusj_fatjet1, counts=1), ak.unflatten(nmusj_fatjet2, counts=1)), axis=1 )
-        events["nmusj_fatjet1"] = nmusj_fatjet1
-        events["nmusj_fatjet2"] = nmusj_fatjet2
-        events["nmusj"] = nmusj
-        assert not ak.any(ak.is_none(nmusj)), "None in nmusj"
+        #mask_nsubjets = ak.num(events.FatJet.subjets, axis=2) >= 2
         # Apply the msd and preselection cuts
         mask_msd = (events.FatJet.msoftdrop > cuts["msd"])
         mask_good_jets = mask_presel & mask_msd
+        #mask_good_jets = mask_presel & mask_nsubjets & mask_msd
 
     return jets[mask_good_jets], mask_good_jets
 
