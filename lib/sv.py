@@ -43,31 +43,6 @@ def get_sv_in_jet(jet, sv, pos, R=0.8):
 
     return sv_in_jet
 
-def get_nmu_in_subjet(jet, muon, pos, R=0.4):
-
-    # Compute the number of muons inside the subjet of the leading and subleading FatJet (nmusj1, nmusj2).
-    # The concatenated array is returned.
-    if pos == 0:
-        jet = jet[:,0]
-    elif pos == 1:
-        jet = ak.pad_none(jet,2)[:,1]
-    else:
-        raise Exception("Only the leading and subleading jets can be considered.")
-
-    sj1 = jet.subjets[:, 0]
-    sj2 = jet.subjets[:, 1]
-    mu_dr1 = sj1.delta_r(muon)
-    mu_dr2 = sj2.delta_r(muon)
-    nmusj1_flat = ak.fill_none(ak.count(mu_dr1[mu_dr1 < R], axis=1), 0, axis=0)
-    nmusj2_flat = ak.fill_none(ak.count(mu_dr2[mu_dr2 < R], axis=1), 0, axis=0)
-    nmusj1 = ak.unflatten( nmusj1_flat, counts=1 )
-    nmusj2 = ak.unflatten( nmusj2_flat, counts=1 )
-
-    assert not ak.any(ak.is_none(nmusj1, axis=1)), nmusj1[ak.any(ak.is_none(nmusj1, axis=1), axis=1)]
-    assert not ak.any(ak.is_none(nmusj2, axis=1)), nmusj2[ak.any(ak.is_none(nmusj2, axis=1), axis=1)]
-
-    return ak.concatenate((nmusj1, nmusj2), axis=1)
-
 # N.B.: In the following the logarithm of the mass-like variables is set to -5 as default value,
 # when the corresponding mass value is 0. This way, the log(mass) histograms will be filled with
 # -5 when the mass is 0. In any case, for the final fit only the range above -2.5 is considered.
