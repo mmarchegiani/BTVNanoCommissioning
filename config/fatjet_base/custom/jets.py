@@ -9,8 +9,6 @@ import correctionlib
 
 from pocket_coffea.parameters.object_preselection import object_preselection
 from pocket_coffea.parameters.jec_config import JECjsonFiles
-from pocket_coffea.lib.deltaR_matching import get_matching_pairs_indices, object_matching
-from lib.sv import get_nmu_in_subjet
 
 # Initialization of the jet factory
 with importlib.resources.path("pocket_coffea.parameters.jec", "jets_evaluator.pkl.gz") as path:

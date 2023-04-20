@@ -93,15 +93,11 @@ def twojets_ptmsd(events, params, **kwargs):
     and events with exactly two jets satisfying the pt, msd requirements.'''
 
     mask_one_jet = (
-        #(events.nmusj[:,0,0] >= params["nmusj1"]) &
-        #(events.nmusj[:,0,1] >= params["nmusj2"]) &
         ak.any(events.FatJetGood.pt > params["pt"], axis=1) &
         ak.any(events.FatJetGood.msoftdrop > params["msd"], axis=1)
     )
 
     mask_two_jets = (
-        #(events.nmusj[:,1,0] >= params["nmusj1"]) &
-        #(events.nmusj[:,1,1] >= params["nmusj2"]) &
         ak.all(events.FatJetGood.pt > params["pt"], axis=1) &
         ak.all(events.FatJetGood.msoftdrop > params["msd"], axis=1)
     )
@@ -115,21 +111,26 @@ def twojets_ptmsd(events, params, **kwargs):
 
     return fatjet_mutag
 
-def mutag(events, params, **kwargs):
+def mutag_fatjet(events, params, **kwargs):
+    # Select jets with a minimum number of matched muons
+    mask_good_jets = (events.FatJetGood.nMuonGoodMatchedToFatJetGood >= params["nmu"])
+
+    assert not ak.any(ak.is_none(mask_good_jets, axis=1)), f"None in mutag_fatjet"
+    #mask_good_jets = mask_good_jets[~ak.is_none(mask, axis=1)]
+
+    return mask_good_jets
+
+def mutag_subjet(events, params, **kwargs):
     # Select jets with a minimum number of subjets
     mask_nsubjet = (ak.count(events.FatJetGood.subjets.pt, axis=2) >= params["nsubjet"])
     # Select jets with a minimum number of mu-tagged subjets
-    #mask_nmusj = ak.all(events.nmusj >= params["nmusj"], axis=2)
-    mask_nmusj = (events.nmusj1 >= params["nmusj"]) & (events.nmusj2 >= params["nmusj"])
-    # Apply di-muon pT ratio cut on FatJets
-    mask_ptratio = (events.dimuon.pt / events.FatJetGood.pt < params["dimuon_pt_ratio"])
-    mask_ptratio = ak.where( ak.is_none(mask_ptratio, axis=1), False, mask_ptratio )
+    if params["unique_matching"]:
+        mask_nmusj = (events.FatJetGood.nMuonGoodMatchedUniquelyToLeadingSubJet >= params["nmusj"]) & (events.FatJetGood.nMuonGoodMatchedUniquelyToSubleadingSubJet >= params["nmusj"])
+    else:
+        mask_nmusj = (events.FatJetGood.nMuonGoodMatchedToLeadingSubJet >= params["nmusj"]) & (events.FatJetGood.nMuonGoodMatchedToSubleadingSubJet >= params["nmusj"])
 
-    njet_max = ak.max(ak.count(events.FatJetGood.pt, axis=1))
-    mask_good_jets = ak.pad_none(ak.ones_like(events.FatJetGood.pt, dtype=bool), njet_max)
-    for mask in [mask_nsubjet, mask_nmusj, mask_ptratio]:
-        mask_good_jets = mask_good_jets & ak.pad_none(mask, njet_max)
-    mask_good_jets = mask_good_jets[~ak.is_none(mask, axis=1)]
+    mask_good_jets = mask_nsubjet & mask_nmusj
+    assert not ak.any(ak.is_none(mask_good_jets, axis=1)), f"None in mutag_subjet"
 
     return mask_good_jets
 

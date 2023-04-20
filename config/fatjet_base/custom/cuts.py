@@ -1,43 +1,46 @@
 # Per-event cuts applied to each event
-import awkward as ak
-import pocket_coffea.lib.cut_functions as cuts_f
 from pocket_coffea.lib.cut_definition import Cut
-from config.fatjet_base.custom.functions import twojets_ptmsd, mutag, ptbin, ptbin_mutag, msoftdrop, ptmsd, ptmsdtau, min_nObj_minmsd, flavor_mask
+from config.fatjet_base.custom.functions import twojets_ptmsd, mutag_fatjet, mutag_subjet, ptbin, ptbin_mutag, msoftdrop, ptmsd, ptmsdtau, min_nObj_minmsd, flavor_mask
 
-twojets_presel = Cut(
-    name="twojets_ptmsd",
+def twojets_presel(pt, msd, name=None):
+    if name == None:
+        name = f"twojets_pt{pt}msd{msd}"
+    return Cut(
+    name=name,
     params={
-        "nmusj1" : 1,
-        "nmusj2" : 1,
-        "pt" : 250,
-        "msd" : 20,
-        #"dimuon_pt_ratio" : 0.6
+        "pt" : pt,
+        "msd" : msd,
     },
     function=twojets_ptmsd
 )
 
-twojets_presel_pt250msd40 = Cut(
-    name="twojets_ptmsd",
-    params={
-        "nmusj1" : 1,
-        "nmusj2" : 1,
-        "pt" : 250,
-        "msd" : 40,
-        #"dimuon_pt_ratio" : 0.6
-    },
-    function=twojets_ptmsd
-)
+def mutag_fatjet_sel(nmu, name=None):
+    if name == None:
+        name = f"mutag_fatjet_nmu-{nmu}"
+    return Cut(
+        name=name,
+        params={
+            "nmu" : nmu,
+        },
+        collection="FatJetGood",
+        function=mutag_fatjet
+    )
 
-mutag_sel = Cut(
-    name="mutag",
-    params={
-        "nsubjet" : 2,
-        "nmusj" : 1,
-        "dimuon_pt_ratio": 0.6
-    },
-    collection="FatJetGood",
-    function=mutag
-)
+def mutag_subjet_sel(unique_matching, name=None):
+    if name == None:
+        name = "mutag_subjet"
+        if unique_matching:
+            name += "_unique"
+    return Cut(
+        name=name,
+        params={
+            "nsubjet" : 2,
+            "nmusj" : 1,
+            "unique_matching": unique_matching
+        },
+        collection="FatJetGood",
+        function=mutag_subjet
+    )
 
 def get_ptbin(pt_low, pt_high, name=None):
     if name == None:
