@@ -123,12 +123,6 @@ class fatjetBaseProcessor(BaseProcessorABC):
             self.events, "FatJet", self.cfg.finalstate
         )
 
-        fatjet_fields = {
-            "tau21"   : self.events.FatJetGood.tau2 / self.events.FatJetGood.tau1,
-        }
-        for field, value in fatjet_fields.items():
-            self.events["FatJetGood"] = ak.with_field(self.events.FatJetGood, value, field)
-
         # Restrict analysis to leading and subleading jets only
         self.events["FatJetGood"] = self.events.FatJetGood[ak.local_index(self.events.FatJetGood, axis=1) < 2]
 
@@ -140,9 +134,6 @@ class fatjetBaseProcessor(BaseProcessorABC):
         # the first object are the muons matched to the leading subjet,
         # the second object are the muons that are matched to the subleading subjet, while
         # the third object are the dimuon pairs constructed from the matched muons
-        #self.events["MuonGoodMatchedToLeadingSubjet"], self.events["MuonGoodMatchedToSubleadingSubjet"], self.events["dimuon"] = muon_matched_selection(
-        #    self.events.FatJetGood, self.events.MuonGood, R=0.4
-        #)
 
         self.events["MuonGoodMatchedToFatJetGood"] = muons_matched_to_fatjet(self.events)
         self.events["MuonGoodMatchedToLeadingSubJet"] = muons_matched_to_subjet(self.events, pos=0, unique=False)
@@ -150,13 +141,17 @@ class fatjetBaseProcessor(BaseProcessorABC):
         self.events["MuonGoodMatchedUniquelyToLeadingSubJet"] = muons_matched_to_subjet(self.events, pos=0, unique=True)
         self.events["MuonGoodMatchedUniquelyToSubleadingSubJet"] = muons_matched_to_subjet(self.events, pos=1, unique=True)
 
-        self.events.FatJetGood["nMuonGoodMatchedToFatJetGood"] = ak.count(self.events["MuonGoodMatchedToFatJetGood"], axis=2)
-        self.events.FatJetGood["nMuonGoodMatchedToLeadingSubJet"] = ak.count(self.events["MuonGoodMatchedToLeadingSubJet"], axis=2)
-        self.events.FatJetGood["nMuonGoodMatchedToSubleadingSubJet"] = ak.count(self.events["MuonGoodMatchedToSubleadingSubJet"], axis=2)
-        self.events.FatJetGood["nMuonGoodMatchedUniquelyToLeadingSubJet"] = ak.count(self.events["MuonGoodMatchedUniquelyToLeadingSubJet"], axis=2)
-        self.events.FatJetGood["nMuonGoodMatchedUniquelyToSubleadingSubJet"] = ak.count(self.events["MuonGoodMatchedUniquelyToSubleadingSubJet"], axis=2)
-        #self.events.FatJetGood["nmusj1"] = ak.count(self.events["MuonGoodMatchedToLeadingSubjet"], axis=2)
-        #self.events.FatJetGood["nmusj2"] = ak.count(self.events["MuonGoodMatchedToSubleadingSubjet"], axis=2)
+        fatjet_fields = {
+            "tau21"   : self.events.FatJetGood.tau2 / self.events.FatJetGood.tau1,
+            #"nSubJet" : ak.count(events.FatJetGood.subjets.pt, axis=2),
+            "nMuonGoodMatchedToFatJetGood" : ak.count(self.events["MuonGoodMatchedToFatJetGood"].pt, axis=2),
+            "nMuonGoodMatchedToLeadingSubJet" : ak.count(self.events["MuonGoodMatchedToLeadingSubJet"].pt, axis=2),
+            "nMuonGoodMatchedToSubleadingSubJet" : ak.count(self.events["MuonGoodMatchedToSubleadingSubJet"].pt, axis=2),
+            "nMuonGoodMatchedUniquelyToLeadingSubJet" : ak.count(self.events["MuonGoodMatchedUniquelyToLeadingSubJet"].pt, axis=2),
+            "nMuonGoodMatchedUniquelyToSubleadingSubJet" : ak.count(self.events["MuonGoodMatchedUniquelyToSubleadingSubJet"].pt, axis=2)
+        }
+        for field, value in fatjet_fields.items():
+            self.events["FatJetGood"] = ak.with_field(self.events.FatJetGood, value, field)
 
 
     def count_objects(self, variation):
