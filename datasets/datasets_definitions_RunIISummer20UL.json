@@ -563,7 +563,7 @@
       "sample": "SingleTop_ttbar",
       "json_output" : "datasets/MC_top_RunIISummer20UL.json",
       "files": [
-          { "das_names": ["/TTToHadronic_TuneCP5_13TeV-powheg-pythia8/RunIISummer20UL18NanoAODv9-FSUL18_FSUL18_bugFix_106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"],
+          { "das_names": ["/TTToHadronic_TuneCP5_13TeV-powheg-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"],
             "dbs_instance" : "prod/global",
             "metadata":{
                 "year": "2018",
