@@ -125,9 +125,9 @@ def mutag_subjet(events, params, **kwargs):
     mask_nsubjet = (ak.count(events.FatJetGood.subjets.pt, axis=2) >= params["nsubjet"])
     # Select jets with a minimum number of mu-tagged subjets
     if params["unique_matching"]:
-        mask_nmusj = (events.FatJetGood.nMuonGoodMatchedUniquelyToLeadingSubJet >= params["nmusj"]) & (events.FatJetGood.nMuonGoodMatchedUniquelyToSubleadingSubJet >= params["nmusj"])
+        mask_nmusj = (events.FatJetGood.nMuonGoodMatchedUniquelyToSubJet >= params["nmuons"])
     else:
-        mask_nmusj = (events.FatJetGood.nMuonGoodMatchedToLeadingSubJet >= params["nmusj"]) & (events.FatJetGood.nMuonGoodMatchedToSubleadingSubJet >= params["nmusj"])
+        mask_nmusj = (events.FatJetGood.nMuonGoodMatchedToSubJet >= params["nmuons"])
 
     mask_good_jets = mask_nsubjet & mask_nmusj
     assert not ak.any(ak.is_none(mask_good_jets, axis=1)), f"None in mutag_subjet"

@@ -35,7 +35,7 @@ def mutag_subjet_sel(unique_matching, name=None):
         name=name,
         params={
             "nsubjet" : 2,
-            "nmusj" : 1,
+            "nmuons" : 2,
             "unique_matching": unique_matching
         },
         collection="FatJetGood",

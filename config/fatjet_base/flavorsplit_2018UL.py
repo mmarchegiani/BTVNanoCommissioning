@@ -3,7 +3,7 @@ from workflows.fatjet_base import fatjetBaseProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
 from pocket_coffea.parameters.histograms import *
 from pocket_coffea.lib.categorization import CartesianSelection, MultiCut
-from config.fatjet_base.custom.cuts import twojets_presel_pt250msd40, mutag_sel, get_ptmsd, get_nObj_minmsd, get_flavor, get_ptbin
+from config.fatjet_base.custom.cuts import twojets_presel_pt250msd40, mutag_subjet_sel, get_ptmsd, get_nObj_minmsd, get_flavor, get_ptbin
 from config.fatjet_base.custom.functions import get_HLTsel, get_inclusive_wp
 from parameters import PtBinning, AK8TaggerWP, AK8Taggers
 
@@ -13,8 +13,8 @@ msd = 40.
 
 common_cats = {
     "inclusive" : [passthrough],
-    "pt350msd40_mutag" : [get_ptmsd(350., msd), mutag_sel],
-    "pt450msd40_mutag" : [get_ptmsd(450., msd), mutag_sel],
+    "pt350msd40_mutag" : [get_ptmsd(350., msd), mutag_subjet_sel],
+    "pt450msd40_mutag" : [get_ptmsd(450., msd), mutag_subjet_sel],
 }
 
 cuts_pt = []
@@ -32,7 +32,7 @@ for tagger in AK8Taggers:
 
 multicuts = [
     MultiCut(name="mutag",
-             cuts=[passthrough, mutag_sel],
+             cuts=[passthrough, mutag_subjet_sel],
              cuts_names=["NOmutag", "mutag"]),
     MultiCut(name="tagger",
              cuts=cuts_tagger,
@@ -127,7 +127,7 @@ cfg =  {
 
    "variables":
     {
-        **muon_hists(coll="MuonGoodMatchedToFatJetGood"),
+        #**muon_hists(coll="MuonGoodMatchedToFatJetGood"),
         **fatjet_hists(coll="FatJetGood"),
         **sv_hists(coll="events"),
         "nMuonGoodMatchedToFatJetGood": HistConf(

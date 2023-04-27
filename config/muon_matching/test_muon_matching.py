@@ -37,7 +37,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : fatjetBaseProcessor,
-    "output"   : "output/test/muon_matching",
+    "output"   : "output/test/muon_matching_limitfile1",
     "workflow_options" : {
         "histograms_to_reweigh" : [],
         "reweighting_scheme"    : "ptetatau21"},
@@ -65,7 +65,7 @@ cfg =  {
     "finalstate" : "mutag",
     "skim": [get_nObj_min(1, 200., "FatJet"),
              get_nObj_minmsd(1, 30., "FatJet"),
-             get_nObj_min(2, 3., "Muon"),
+             get_nObj_min(1, 3., "Muon"),
              get_HLTsel("mutag")],
     "save_skimmed_files" : None,
     "preselections" : [twojets_presel(pt=250, msd=40)],
@@ -111,23 +111,14 @@ cfg =  {
         **fatjet_hists(coll="FatJetGood"),
         **sv_hists(coll="events"),
         "nMuonGoodMatchedToFatJetGood": HistConf(
-            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToFatJetGood", label=r"$N_{\mu, AK8}$", bins=4, start=0, stop=4) ]
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToFatJetGood", label="Number of muons inside AK8 jet", bins=4, start=0, stop=4) ]
         ),
-        "nMuonGoodMatchedToLeadingSubJet": HistConf(
-            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToLeadingSubJet", label=r"$N_{\mu, sj1}$", bins=4, start=0, stop=4) ]
+        "nMuonGoodMatchedToSubJet": HistConf(
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToSubJet", label="Number of muons matched to subjet", bins=3, start=0, stop=3) ]
         ),
-        "nMuonGoodMatchedToSubleadingSubJet": HistConf(
-            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToSubleadingSubJet", label=r"$N_{\mu, sj2}$", bins=4, start=0, stop=4) ]
+        "nMuonGoodMatchedUniquelyToSubJet": HistConf(
+            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedUniquelyToSubJet", label="Number of muons matched uniquely to subjet", bins=3, start=0, stop=3) ]
         ),
-        "nMuonGoodMatchedUniquelyToLeadingSubJet": HistConf(
-            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedUniquelyToLeadingSubJet", label=r"$N_{\mu, sj1}$", bins=4, start=0, stop=4) ]
-        ),
-        "nMuonGoodMatchedUniquelyToSubleadingSubJet": HistConf(
-            [ Axis(coll="FatJetGood", field="nMuonGoodMatchedUniquelyToSubleadingSubJet", label=r"$N_{\mu, sj2}$", bins=4, start=0, stop=4) ]
-        ),
-        #"dimuon_pt": HistConf(
-        #    [ Axis(coll="dimuon", field="pt", label=r"Di-muon $p_{T}$ [GeV]", bins=50, start=0, stop=200) ]
-        #),
         **count_hist(name="nMuonGood", coll="MuonGood",bins=5, start=0, stop=5),
         **count_hist(name="nFatJets", coll="FatJetGood",bins=5, start=0, stop=5),
         **count_hist(name="nSV", coll="SV",bins=10, start=0, stop=10),
