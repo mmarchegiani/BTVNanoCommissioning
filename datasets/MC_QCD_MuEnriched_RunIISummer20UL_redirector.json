@@ -7,6 +7,7 @@
             "year": "2018",
             "isMC": "True",
             "xsec": "7055.0",
+            "sum_genweights": "69282280.0",
             "nevents": "69282284",
             "size": "328739245052"
         },
@@ -1422,6 +1423,7 @@
             "year": "2017",
             "isMC": "True",
             "xsec": "7055.0",
+            "sum_genweights": "73036080.0",
             "nevents": "73036079",
             "size": "353324692441"
         },
@@ -3001,6 +3003,7 @@
             "year": "2016_PostVFP",
             "isMC": "True",
             "xsec": "7055.0",
+            "sum_genweights": "33880928.0",
             "nevents": "33880928",
             "size": "173260072838"
         },
@@ -3231,6 +3234,7 @@
             "year": "2016_PreVFP",
             "isMC": "True",
             "xsec": "7055.0",
+            "sum_genweights": "33880930.0",
             "nevents": "33880928",
             "size": "173600366356"
         },
@@ -3429,6 +3433,7 @@
             "year": "2018",
             "isMC": "True",
             "xsec": "619.3",
+            "sum_genweights": "58771420.0",
             "nevents": "58771417",
             "size": "376728366684"
         },
@@ -4684,6 +4689,7 @@
             "year": "2017",
             "isMC": "True",
             "xsec": "619.3",
+            "sum_genweights": "58573944.0",
             "nevents": "58573943",
             "size": "379761092346"
         },
@@ -6174,6 +6180,7 @@
             "year": "2016_PostVFP",
             "isMC": "True",
             "xsec": "619.3",
+            "sum_genweights": "29908656.0",
             "nevents": "29908653",
             "size": "204062678659"
         },
@@ -6412,6 +6419,7 @@
             "year": "2016_PreVFP",
             "isMC": "True",
             "xsec": "619.3",
+            "sum_genweights": "29908658.0",
             "nevents": "29908653",
             "size": "204693172616"
         },
@@ -6728,6 +6736,7 @@
             "year": "2018",
             "isMC": "True",
             "xsec": "59.24",
+            "sum_genweights": "38645928.0",
             "nevents": "38645779",
             "size": "280246817360"
         },
@@ -7742,6 +7751,7 @@
             "year": "2017",
             "isMC": "True",
             "xsec": "59.24",
+            "sum_genweights": "39816956.0",
             "nevents": "39816804",
             "size": "290948023840"
         },
@@ -8796,6 +8806,7 @@
             "year": "2016_PostVFP",
             "isMC": "True",
             "xsec": "59.24",
+            "sum_genweights": "14220706.0",
             "nevents": "14220650",
             "size": "110791347368"
         },
@@ -9012,6 +9023,7 @@
             "year": "2016_PreVFP",
             "isMC": "True",
             "xsec": "59.24",
+            "sum_genweights": "14220705.0",
             "nevents": "14220650",
             "size": "110643135810"
         },
@@ -9140,6 +9152,7 @@
             "year": "2018",
             "isMC": "True",
             "xsec": "18.21",
+            "sum_genweights": "37158776.0",
             "nevents": "37158777",
             "size": "287523092086"
         },
@@ -10119,6 +10132,7 @@
             "year": "2017",
             "isMC": "True",
             "xsec": "18.21",
+            "sum_genweights": "39326156.0",
             "nevents": "39326156",
             "size": "306378765605"
         },
@@ -11131,6 +11145,7 @@
             "year": "2016_PostVFP",
             "isMC": "True",
             "xsec": "18.21",
+            "sum_genweights": "18763140.0",
             "nevents": "18763139",
             "size": "156574931031"
         },
@@ -11352,6 +11367,7 @@
             "year": "2016_PreVFP",
             "isMC": "True",
             "xsec": "18.21",
+            "sum_genweights": "18763140.0",
             "nevents": "18763139",
             "size": "156713004906"
         },
@@ -11549,6 +11565,7 @@
             "year": "2018",
             "isMC": "True",
             "xsec": "3.275",
+            "sum_genweights": "78314176.0",
             "nevents": "78314171",
             "size": "643026050516"
         },
@@ -13593,6 +13610,7 @@
             "year": "2017",
             "isMC": "True",
             "xsec": "3.275",
+            "sum_genweights": "78133744.0",
             "nevents": "78133749",
             "size": "645831914153"
         },
@@ -15584,6 +15602,7 @@
             "year": "2016_PostVFP",
             "isMC": "True",
             "xsec": "3.275",
+            "sum_genweights": "38921528.0",
             "nevents": "38921526",
             "size": "345978357513"
         },
@@ -15972,6 +15991,7 @@
             "year": "2016_PreVFP",
             "isMC": "True",
             "xsec": "3.275",
+            "sum_genweights": "38921524.0",
             "nevents": "38921526",
             "size": "346375896197"
         },
@@ -16337,6 +16357,7 @@
             "year": "2018",
             "isMC": "True",
             "xsec": "1.078",
+            "sum_genweights": "27369976.0",
             "nevents": "27369976",
             "size": "236735986175"
         },
@@ -17173,6 +17194,7 @@
             "year": "2017",
             "isMC": "True",
             "xsec": "1.078",
+            "sum_genweights": "27537496.0",
             "nevents": "27537497",
             "size": "239823638067"
         },
@@ -18018,6 +18040,7 @@
             "year": "2016_PostVFP",
             "isMC": "True",
             "xsec": "1.078",
+            "sum_genweights": "14243204.0",
             "nevents": "14243204",
             "size": "130492761964"
         },
@@ -18191,6 +18214,7 @@
             "year": "2016_PreVFP",
             "isMC": "True",
             "xsec": "1.078",
+            "sum_genweights": "33880928.0",
             "nevents": "14243204",
             "size": "130417554601"
         },
