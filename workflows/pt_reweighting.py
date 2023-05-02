@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 
+import awkward as ak
 import numpy as np
 import hist
 from coffea.lookup_tools.dense_lookup import dense_lookup
@@ -11,6 +12,7 @@ import correctionlib.convert
 
 from workflows.fatjet_base import fatjetBaseProcessor
 from pocket_coffea.utils.configurator import Configurator
+from config.fatjet_base.custom.cuts import get_ptmsd, mutag_fatjet_sel, mutag_subjet_sel
 
 def dense_axes(h):
     '''Returns the list of dense axes of a histogram.'''
@@ -66,11 +68,45 @@ def overwrite_check(outfile):
 class ptReweightProcessor(fatjetBaseProcessor):
     def __init__(self, cfg: Configurator):
         super().__init__(cfg)
-        self.pt_eta_2d_maps = ['FatJetGood_pt_eta', 'FatJetGood_pt_eta_bineta0p40', 'FatJetGood_pt_eta_binpt20', 'FatJetGood_pt_eta_binpt20_bineta0p40']
-        self.pt_eta_tau21_3d_maps = ['FatJetGood_pt_eta_tau21']
+        self.pt_eta_2d_maps = [
+            'FatJetGoodNMuon1_pt_eta',# 'FatJetGoodNMuon1_pt_eta_bineta0p40', 'FatJetGoodNMuon1_pt_eta_binpt20', 'FatJetGoodNMuon1_pt_eta_binpt20_bineta0p40',
+            'FatJetGoodNMuon2_pt_eta',# 'FatJetGoodNMuon2_pt_eta_bineta0p40', 'FatJetGoodNMuon2_pt_eta_binpt20', 'FatJetGoodNMuon2_pt_eta_binpt20_bineta0p40',
+            'FatJetGoodNMuonSJ1_pt_eta',# 'FatJetGoodNMuonSJ1_pt_eta_bineta0p40', 'FatJetGoodNMuonSJ1_pt_eta_binpt20', 'FatJetGoodNMuonSJ1_pt_eta_binpt20_bineta0p40',
+            'FatJetGoodNMuonSJUnique1_pt_eta',# 'FatJetGoodNMuonSJUnique1_pt_eta_bineta0p40', 'FatJetGoodNMuonSJUnique1_pt_eta_binpt20', 'FatJetGoodNMuonSJUnique1_pt_eta_binpt20_bineta0p40',
+        ]
+        self.pt_eta_tau21_3d_maps = [
+            'FatJetGoodNMuon1_pt_eta_tau21',# 'FatJetGoodNMuon1_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuon1_pt_eta_tau21_binpt20', 'FatJetGoodNMuon1_pt_eta_tau21_binpt20_bineta0p40',
+            'FatJetGoodNMuon2_pt_eta_tau21',# 'FatJetGoodNMuon2_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuon2_pt_eta_tau21_binpt20', 'FatJetGoodNMuon2_pt_eta_tau21_binpt20_bineta0p40',
+            'FatJetGoodNMuonSJ1_pt_eta_tau21',# 'FatJetGoodNMuonSJ1_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuonSJ1_pt_eta_tau21_binpt20', 'FatJetGoodNMuonSJ1_pt_eta_tau21_binpt20_bineta0p40',
+            'FatJetGoodNMuonSJUnique1_pt_eta_tau21',# 'FatJetGoodNMuonSJUnique1_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuonSJUnique1_pt_eta_tau21_binpt20', 'FatJetGoodNMuonSJUnique1_pt_eta_tau21_binpt20_bineta0p40'
+        ]
         for histname in self.pt_eta_2d_maps + self.pt_eta_tau21_3d_maps:
             if not histname in self.cfg.variables.keys():
                 raise Exception(f"'{histname}' is not present in the histogram keys.")
+
+    def apply_object_preselection(self, variation):
+        super().apply_object_preselection(variation)
+        pt_min = 450.
+        msd = 40.
+        cuts_dict = {
+            "FatJetGoodNMuon1" : [get_ptmsd(pt_min, msd), mutag_fatjet_sel(nmu=1)],
+            "FatJetGoodNMuon2" : [get_ptmsd(pt_min, msd), mutag_fatjet_sel(nmu=2)],
+            "FatJetGoodNMuonSJ1" : [get_ptmsd(pt_min, msd), mutag_subjet_sel(unique_matching=False)],
+            "FatJetGoodNMuonSJUnique1" : [get_ptmsd(pt_min, msd), mutag_subjet_sel(unique_matching=True)],
+        }
+        self._ak8jet_collections = list(cuts_dict.keys())
+        for coll, cuts in cuts_dict.items():
+            masks = [cut.get_mask(self.events) for cut in cuts]
+            mask_total = ak.ones_like(masks[0], dtype=bool)
+            for mask in masks:
+                mask_total = mask_total & mask
+            self.events[coll] = self.events.FatJetGood[mask_total]
+            self.events[coll] = ak.with_field(self.events[coll], ak.local_index(self.events[coll].pt), "pos")
+
+    def count_objects(self, variation):
+        super().count_objects(variation)
+        for coll in self._ak8jet_collections:
+            self.events[f"n{coll}"] = ak.num(self.events[coll])
 
     def pt_reweighting(self, accumulator, year, histname):
         h = accumulator['variables'][histname]
@@ -78,7 +114,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
         samples_data = list(filter(lambda d: 'DATA' in d, samples))
         samples_mc = list(filter(lambda d: 'DATA' not in d, samples))
         samples_qcd = list(filter(lambda d: 'QCD' in d, samples_mc))
-        samples_vjets = list(filter(lambda d: 'VJets' in d, samples_mc))
+        samples_vjets_top = list(filter(lambda d: (('VJets' in d) | ('SingleTop_ttbar' in d)), samples_mc))
 
         h_qcd = h[samples_qcd[0]]
 
@@ -90,9 +126,9 @@ class ptReweightProcessor(fatjetBaseProcessor):
         for cat in categories:
             slicing_mc_nominal = {'year': year, 'cat': cat, 'variation': 'nominal'}
             dict_qcd_nominal = {d: h[d][slicing_mc_nominal] for d in samples_qcd}
-            dict_vjets_nominal = {d: h[d][slicing_mc_nominal] for d in samples_vjets}
+            dict_vjets_top_nominal = {d: h[d][slicing_mc_nominal] for d in samples_vjets_top}
             stack_qcd_nominal = hist.Stack.from_dict(dict_qcd_nominal)
-            stack_vjets_nominal = hist.Stack.from_dict(dict_vjets_nominal)
+            stack_vjets_top_nominal = hist.Stack.from_dict(dict_vjets_top_nominal)
 
             if 'era' in h[samples_data[0]].axes.name:
                 slicing_data = {'year': year, 'cat': cat, 'era': sum}
@@ -102,9 +138,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
             stack_data = hist.Stack.from_dict(dict_data)
             if len(stack_data) > 1:
                 raise NotImplementedError
-            else:
-                h_data = stack_data[0]
-            ratio, unc = get_data_mc_ratio(stack_data, stack_qcd_nominal, stack_vjets_nominal)
+            ratio, unc = get_data_mc_ratio(stack_data, stack_qcd_nominal, stack_vjets_top_nominal)
             mod_ratio  = np.nan_to_num(ratio)
             if histname in self.pt_eta_2d_maps:
                 mod_ratio[mod_ratio == 0.0] = 1
@@ -116,7 +150,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
         sfhist.label = "out"
         sfhist.name = f"{histname}_corr_{year}"
         description = "Reweighting SF matching the leading fatjet pT and eta MC distribution to data."
-        clibcorr = correctionlib.convert.from_histogram(sfhist)
+        clibcorr = correctionlib.convert.from_histogram(sfhist, flow="clamp")
         clibcorr.description = description
         cset = correctionlib.schemav2.CorrectionSet(
             schema_version=2,
@@ -135,17 +169,19 @@ class ptReweightProcessor(fatjetBaseProcessor):
         cset = correctionlib.CorrectionSet.from_file(outfile_reweighting)
         print("inclusive:")
         pt_corr = cset[sfhist.name]
+        pos  = np.array([0, 1, 0, 1, 0], dtype=int)
         pt  = np.array([50, 100, 400, 500, 1000], dtype=float)
         eta = np.array([-2, -1, 0, 1, 2], dtype=float)
+        print("pos =", pos)
         print("pt =", pt)
         print("eta =", eta)
         if histname in self.pt_eta_2d_maps:
-            args = (pt, eta)
+            args = (pos, pt, eta)
 
         elif histname in self.pt_eta_tau21_3d_maps:
             tau21 = np.array([0.1, 0.35, 0.65, 0.8, 0.9], dtype=float)
             print("tau21 =", tau21)
-            args = (pt, eta, tau21)
+            args = (pos, pt, eta, tau21)
         print(pt_corr.evaluate('inclusive', *args))
 
     def postprocess(self, accumulator):

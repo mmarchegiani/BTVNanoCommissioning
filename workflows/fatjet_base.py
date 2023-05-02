@@ -1,3 +1,4 @@
+import os
 import awkward as ak
 from collections import defaultdict
 import correctionlib
@@ -8,48 +9,45 @@ from pocket_coffea.lib.leptons import lepton_selection
 
 from config.fatjet_base.custom.leptons import lepton_selection_noniso
 from config.fatjet_base.custom.jets import jet_selection
-from config.fatjet_base.custom.parameters.pt_reweighting.pt_reweighting import pteta_corrections, ptetatau21_corrections
 from lib.sv import *
-from lib.muon_matching import muons_matched_to_fatjet, muons_matched_to_subjet
+from lib.muon_matching import muons_matched_to_fatjet, muon_matched_to_subjet
 from pocket_coffea.lib.hist_manager import Axis
 
-def pteta_reweighting(events, year):
+def pteta_reweighting(file, events, year):
     '''Reweighting scale factor based on the leading fatjet pT, eta'''
-    cat = 'pt450msd40_mutag'
-    cset = correctionlib.CorrectionSet.from_file(pteta_corrections[year])
+    cat = 'inclusive'
+    cset = correctionlib.CorrectionSet.from_file(file)
     keys = list(cset.keys())
     assert len(keys) == 1, f"The correction has {len(keys)} keys. The choice of the key is ambiguous."
     key = list(cset.keys())[0]
     pteta_corr = cset[key]
 
-    '''In case the jet pt is higher than 1500 GeV, the pt is padded to 0
-    and a correction SF of 1 is returned.'''
-    pt, nfatjet  = ak.flatten(events.FatJetGood.pt), ak.num(events.FatJetGood.pt)
+    nfatjet  = ak.num(events.FatJetGood.pt)
+    pos = ak.flatten(ak.local_index(events.FatJetGood.pt))
+    pt  = ak.flatten(events.FatJetGood.pt)
     eta = ak.flatten(events.FatJetGood.eta)
-    pt = ak.where(pt < 1500, pt, 0)
 
-    weight = pteta_corr.evaluate(cat, pt, eta)
+    weight = pteta_corr.evaluate(cat, pos, pt, eta)
     weight = ak.unflatten(weight, nfatjet)
 
     return weight
 
-def ptetatau21_reweighting(events, year):
+def ptetatau21_reweighting(file, events, year):
     '''Reweighting scale factor based on the leading fatjet pT, eta, tau21'''
-    cat = 'pt450msd40_mutag'
-    cset = correctionlib.CorrectionSet.from_file(ptetatau21_corrections[year])
+    cat = 'inclusive'
+    cset = correctionlib.CorrectionSet.from_file(file)
     keys = list(cset.keys())
     assert len(keys) == 1, f"The correction has {len(keys)} keys. The choice of the key is ambiguous."
     key = list(cset.keys())[0]
     ptetatau21_corr = cset[key]
 
-    '''In case the jet pt is higher than 1500 GeV, the pt is padded to 0
-    and a correction SF of 1 is returned.'''
-    pt, nfatjet  = ak.flatten(events.FatJetGood.pt), ak.num(events.FatJetGood.pt)
+    nfatjet  = ak.num(events.FatJetGood.pt)
+    pos = ak.flatten(ak.local_index(events.FatJetGood.pt))
+    pt = ak.flatten(events.FatJetGood.pt)
     eta = ak.flatten(events.FatJetGood.eta)
-    pt = ak.where(pt < 1500, pt, 0)
     tau21 = ak.flatten(events.FatJetGood.tau21)
 
-    weight = ptetatau21_corr.evaluate(cat, pt, eta, tau21)
+    weight = ptetatau21_corr.evaluate(cat, pos, pt, eta, tau21)
     weight = ak.unflatten(weight, nfatjet)
 
     return weight
@@ -76,11 +74,17 @@ class fatjetBaseProcessor(BaseProcessorABC):
             raise Exception("The entry of the config file 'workflow_options' does not contain a key 'histograms_to_reweigh'. Please specify it in the config file.")
         if not "reweighting_scheme" in self.cfg.workflow_options.keys():
             raise Exception("The entry of the config file 'workflow_options' does not contain a key 'reweighting_scheme'. Please specify it in the config file.")
-        else:
-            reweighting_scheme = self.cfg.workflow_options["reweighting_scheme"]
-            possible_schemes = ["pteta", "ptetatau21", None]
-            if not reweighting_scheme in possible_schemes:
-                raise Exception(f"The reweighting scheme '{reweighting_scheme}' . Please specify a reweighting scheme among {possible_schemes}.")
+        if not "reweighting_map" in self.cfg.workflow_options.keys():
+            raise Exception("The entry of the config file 'workflow_options' does not contain a key 'reweighting_map'. Please specify it in the config file.")
+        self.histograms_to_reweigh = self.cfg.workflow_options["histograms_to_reweigh"]
+        self.reweighting_scheme = self.cfg.workflow_options["reweighting_scheme"]
+        self.reweighting_map = self.cfg.workflow_options["reweighting_map"]
+        possible_schemes = ["pteta", "ptetatau21", None]
+        if not self.reweighting_scheme in possible_schemes:
+            raise Exception(f"The reweighting scheme '{self.reweighting_scheme}' does not exist. Please specify a reweighting scheme among {possible_schemes}.")
+        if self.reweighting_map != None:
+            if not os.path.exists(self.reweighting_map):
+                raise Exception(f"The reweighting map file '{self.reweighting_map}' does not exist. Please check the path of the reweighting map file.")
 
     def apply_object_preselection(self, variation):
         '''
@@ -136,23 +140,22 @@ class fatjetBaseProcessor(BaseProcessorABC):
         # the third object are the dimuon pairs constructed from the matched muons
 
         self.events["MuonGoodMatchedToFatJetGood"] = muons_matched_to_fatjet(self.events)
-        self.events["MuonGoodMatchedToLeadingSubJet"] = muons_matched_to_subjet(self.events, pos=0, unique=False)
-        self.events["MuonGoodMatchedToSubleadingSubJet"] = muons_matched_to_subjet(self.events, pos=1, unique=False)
-        self.events["MuonGoodMatchedUniquelyToLeadingSubJet"] = muons_matched_to_subjet(self.events, pos=0, unique=True)
-        self.events["MuonGoodMatchedUniquelyToSubleadingSubJet"] = muons_matched_to_subjet(self.events, pos=1, unique=True)
+        muon_matched_to_leading_subjet = muon_matched_to_subjet(self.events, pos=0, unique=False)
+        muon_matched_to_subleading_subjet = muon_matched_to_subjet(self.events, pos=1, unique=False)
+        self.events["MuonGoodMatchedToSubJet"] = ak.concatenate((muon_matched_to_leading_subjet, muon_matched_to_subleading_subjet), axis=2)
+        muon_matched_uniquely_to_leading_subjet = muon_matched_to_subjet(self.events, pos=0, unique=True)
+        muon_matched_uniquely_to_subleading_subjet = muon_matched_to_subjet(self.events, pos=1, unique=True)
+        self.events["MuonGoodMatchedUniquelyToSubJet"] = ak.concatenate((muon_matched_uniquely_to_leading_subjet, muon_matched_uniquely_to_subleading_subjet), axis=2)
 
         fatjet_fields = {
-            "tau21"   : self.events.FatJetGood.tau2 / self.events.FatJetGood.tau1,
+            "tau21" : self.events.FatJetGood.tau2 / self.events.FatJetGood.tau1,
             #"nSubJet" : ak.count(events.FatJetGood.subjets.pt, axis=2),
             "nMuonGoodMatchedToFatJetGood" : ak.count(self.events["MuonGoodMatchedToFatJetGood"].pt, axis=2),
-            "nMuonGoodMatchedToLeadingSubJet" : ak.count(self.events["MuonGoodMatchedToLeadingSubJet"].pt, axis=2),
-            "nMuonGoodMatchedToSubleadingSubJet" : ak.count(self.events["MuonGoodMatchedToSubleadingSubJet"].pt, axis=2),
-            "nMuonGoodMatchedUniquelyToLeadingSubJet" : ak.count(self.events["MuonGoodMatchedUniquelyToLeadingSubJet"].pt, axis=2),
-            "nMuonGoodMatchedUniquelyToSubleadingSubJet" : ak.count(self.events["MuonGoodMatchedUniquelyToSubleadingSubJet"].pt, axis=2)
+            "nMuonGoodMatchedToSubJet" : ak.count(self.events["MuonGoodMatchedToSubJet"].pt, axis=2),
+            "nMuonGoodMatchedUniquelyToSubJet" : ak.count(self.events["MuonGoodMatchedUniquelyToSubJet"].pt, axis=2)
         }
         for field, value in fatjet_fields.items():
             self.events["FatJetGood"] = ak.with_field(self.events.FatJetGood, value, field)
-
 
     def count_objects(self, variation):
         self.events["nMuonGood"] = ak.num(self.events.MuonGood)
@@ -231,15 +234,14 @@ class fatjetBaseProcessor(BaseProcessorABC):
             self.events['FatJetGood'] = ak.with_field(self.events['FatJetGood'], padded, field)
 
     def process_extra_before_presel(self, variation):
-        histograms_to_reweigh = self.cfg.workflow_options["histograms_to_reweigh"]
-        if histograms_to_reweigh == None:
+        if self.histograms_to_reweigh == None:
             return
         if self._sample == "QCD_MuEnriched":
-            if self.cfg.workflow_options["reweighting_scheme"] == "pteta":
-                self.custom_weights = {k : pteta_reweighting(self.events, self._year) for k in histograms_to_reweigh}
-            elif self.cfg.workflow_options["reweighting_scheme"] == "ptetatau21":
-                self.custom_weights = {k : ptetatau21_reweighting(self.events, self._year) for k in histograms_to_reweigh}
-            elif self.cfg.workflow_options["reweighting_scheme"] == None:
+            if self.reweighting_scheme == "pteta":
+                self.custom_histogram_weights = {k : pteta_reweighting(self.reweighting_map, self.events, self._year) for k in self.histograms_to_reweigh}
+            elif self.reweighting_scheme == "ptetatau21":
+                self.custom_histogram_weights = {k : ptetatau21_reweighting(self.reweighting_map, self.events, self._year) for k in self.histograms_to_reweigh}
+            elif self.reweighting_scheme == None:
                 return
 
     def fill_column_accumulators(self, variation):
