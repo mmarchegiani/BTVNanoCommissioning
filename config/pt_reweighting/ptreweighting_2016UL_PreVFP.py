@@ -2,7 +2,7 @@ from pocket_coffea.parameters.cuts.preselection_cuts import *
 from workflows.pt_reweighting import ptReweightProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
 from pocket_coffea.parameters.histograms import *
-from config.fatjet_base.custom.cuts import get_nObj_minmsd, get_flavor
+from config.fatjet_base.custom.cuts import get_nObj_minmsd
 from config.fatjet_base.custom.functions import get_HLTsel
 
 samples = ["QCD_MuEnriched",
@@ -10,10 +10,6 @@ samples = ["QCD_MuEnriched",
            "SingleTop_ttbar",
            "DATA"
            ]
-
-subsamples = {}
-for s in filter(lambda x: 'DATA' not in x, samples):
-    subsamples[s] = {f"{s}_{f}" : [get_flavor(f)] for f in ['l', 'c', 'b', 'cc', 'bb']}
 
 cfg =  {
     "dataset" : {
@@ -25,15 +21,15 @@ cfg =  {
             "samples": samples,
             "samples_exclude" : [],
             "year": ['2016_PreVFP']
-        },
-        "subsamples": subsamples
+        }
     },
 
     # Input and output files
     "workflow" : ptReweightProcessor,
-    "output"   : "output/test/pt_reweighting/pt_eta_tau21_reweighting_2016_PreVFP",
+    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_tau21_reweighting_2016_PreVFP_coarse",
     "workflow_options" : {"histograms_to_reweigh" : [],
-                          "reweighting_scheme"    : None},
+                          "reweighting_scheme"    : None,
+                          "reweighting_map"       : None,},
 
     "run_options" : {
         "executor"       : "dask/slurm",
@@ -94,7 +90,7 @@ cfg =  {
    "variables":
     {
         **fatjet_hists(coll="FatJetGood"),
-        **sv_hists(coll="events"),
+        #**sv_hists(coll="events"),
         **count_hist(name="nFatJetGood", coll="FatJetGood",bins=10, start=0, stop=10),
         **count_hist(coll="FatJetGoodNMuon1",bins=10, start=0, stop=10),
         **count_hist(coll="FatJetGoodNMuon2",bins=10, start=0, stop=10),
@@ -110,50 +106,18 @@ collections = ["FatJetGoodNMuon1", "FatJetGoodNMuon2", "FatJetGoodNMuonSJ1", "Fa
 
 for coll in collections:
     cfg["variables"][f"{coll}_pt_eta"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=40, start=-4, stop=4) ]
-    )
-    cfg["variables"][f"{coll}_pt_eta_bineta0p40"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=20, start=-4, stop=4) ]
-    )
-    cfg["variables"][f"{coll}_pt_eta_binpt20"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=75, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=40, start=-4, stop=4) ]
-    )
-    cfg["variables"][f"{coll}_pt_eta_binpt20_bineta0p40"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=75, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=20, start=-4, stop=4) ]
+        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", type="int", label=r"FatJet position", bins=2, start=0, stop=2),
+          Axis(name=f"{coll}_pt", coll=coll, field="pt", type="variable", label=r"FatJet $p_{T}$ [GeV]",
+               bins=[450., 500., 550., 600., 700., 800., 900., 2500.]),
+          Axis(name=f"{coll}_eta", coll=coll, field="eta", type="variable", label=r"FatJet $\eta$",
+               bins=[-5, -2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 5]) ]
     )
     cfg["variables"][f"{coll}_pt_eta_tau21"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=40, start=-4, stop=4),
-          Axis(name=f"{coll}_tau21", coll=coll, field="tau21", type="variable", label=r"FatJet $\tau_{21}$",
-               bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
-    )
-    cfg["variables"][f"{coll}_pt_eta_tau21_bineta0p40"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=150, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=20, start=-4, stop=4),
-          Axis(name=f"{coll}_tau21", coll=coll, field="tau21", type="variable", label=r"FatJet $\tau_{21}$",
-               bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
-    )
-    cfg["variables"][f"{coll}_pt_eta_tau21_binpt20"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=75, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=40, start=-4, stop=4),
-          Axis(name=f"{coll}_tau21", coll=coll, field="tau21", type="variable", label=r"FatJet $\tau_{21}$",
-               bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
-    )
-    cfg["variables"][f"{coll}_pt_eta_tau21_binpt20_bineta0p40"] = HistConf(
-        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", label=r"FatJet position", bins=2, start=0, stop=2),
-          Axis(name=f"{coll}_pt", coll=coll, field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=75, start=0, stop=1500),
-          Axis(name=f"{coll}_eta", coll=coll, field="eta", label=r"FatJet $\eta$", bins=20, start=-4, stop=4),
+        [ Axis(name=f"{coll}_pos", coll=coll, field="pos", type="int", label=r"FatJet position", bins=2, start=0, stop=2),
+          Axis(name=f"{coll}_pt", coll=coll, field="pt", type="variable", label=r"FatJet $p_{T}$ [GeV]",
+               bins=[450., 500., 550., 600., 700., 800., 900., 2500.]),
+          Axis(name=f"{coll}_eta", coll=coll, field="eta", type="variable", label=r"FatJet $\eta$",
+               bins=[-5, -2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 5]),
           Axis(name=f"{coll}_tau21", coll=coll, field="tau21", type="variable", label=r"FatJet $\tau_{21}$",
                bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
     )
