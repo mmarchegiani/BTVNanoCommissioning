@@ -167,7 +167,28 @@
         },
         "files": []
     },
-    "DATA_BTagMu_2016_PreVFP_EraB": {
+    "DATA_BTagMu_2016_PreVFP_EraB_ver1": {
+        "metadata": {
+            "das_names": "['/BTagMu/Run2016B-ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD']",
+            "dbs_instance": "prod/global",
+            "sample": "DATA",
+            "year": "2016_PreVFP",
+            "isMC": "False",
+            "primaryDataset": "BTagMu",
+            "era": "B_ver1",
+            "nevents": "1613107",
+            "size": "1516885998"
+        },
+        "files": [
+            "root://mover.pp.rl.ac.uk:1094/pnfs/pp.rl.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/A60D792F-D4FF-6040-9C13-6758980D3C0D.root",
+            "root://mover.pp.rl.ac.uk:1094/pnfs/pp.rl.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/B86C87B6-B635-784E-980A-F42E3031BC2A.root",
+            "root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/D7AADCC0-5869-524E-9A51-6B8D94B040C3.root",
+            "root://gfe02.grid.hep.ph.ic.ac.uk:1094//pnfs/hep.ph.ic.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/DA9122FD-C11A-8D4F-8BBB-3B57AA0A4B7F.root",
+            "root://eoscms.cern.ch//eos/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/ED69EFC6-1743-7A4F-A934-B1E856B2406A.root",
+            "root://cmsxrootd-kit.gridka.de:1094//store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/FC9ABC9C-139F-E748-AD19-FD28BB21BA55.root"
+        ]
+    },
+    "DATA_BTagMu_2016_PreVFP_EraB_ver2": {
         "metadata": {
             "das_names": "['/BTagMu/mmarcheg-Run2016B-ver2_HIPM_UL2016_MiniAODv2-v1_v01-ad24b2120d149f794cf1bc769f1be239/USER']",
             "dbs_instance": "prod/phys03",
@@ -175,7 +196,7 @@
             "year": "2016_PreVFP",
             "isMC": "False",
             "primaryDataset": "BTagMu",
-            "era": "B",
+            "era": "B_ver2",
             "nevents": "35276638",
             "size": "57499134967"
         },
@@ -234,41 +255,6 @@
             "era": "F",
             "nevents": "11119021",
             "size": "30351304499"
-        },
-        "files": []
-    },
-    "DATA_BTagMu_2016_PreVFP_EraB_ver1": {
-        "metadata": {
-            "das_names": "['/BTagMu/Run2016B-ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD']",
-            "dbs_instance": "prod/global",
-            "sample": "DATA",
-            "year": "2016_PreVFP",
-            "isMC": "False",
-            "primaryDataset": "BTagMu",
-            "era": "B_ver1",
-            "nevents": "1613107",
-            "size": "1516885998"
-        },
-        "files": [
-            "root://mover.pp.rl.ac.uk:1094/pnfs/pp.rl.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/A60D792F-D4FF-6040-9C13-6758980D3C0D.root",
-            "root://mover.pp.rl.ac.uk:1094/pnfs/pp.rl.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/B86C87B6-B635-784E-980A-F42E3031BC2A.root",
-            "root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/D7AADCC0-5869-524E-9A51-6B8D94B040C3.root",
-            "root://gfe02.grid.hep.ph.ic.ac.uk:1094//pnfs/hep.ph.ic.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/DA9122FD-C11A-8D4F-8BBB-3B57AA0A4B7F.root",
-            "root://eoscms.cern.ch//eos/cms/store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/ED69EFC6-1743-7A4F-A934-B1E856B2406A.root",
-            "root://cmsxrootd-kit.gridka.de:1094//store/data/Run2016B/BTagMu/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/FC9ABC9C-139F-E748-AD19-FD28BB21BA55.root"
-        ]
-    },
-    "DATA_BTagMu_2016_PreVFP_EraB_ver2": {
-        "metadata": {
-            "das_names": "['/BTagMu/mmarcheg-Run2016B-ver2_HIPM_UL2016_MiniAODv2-v1_v01-ad24b2120d149f794cf1bc769f1be239/USER']",
-            "dbs_instance": "prod/phys03",
-            "sample": "DATA",
-            "year": "2016_PreVFP",
-            "isMC": "False",
-            "primaryDataset": "BTagMu",
-            "era": "B_ver2",
-            "nevents": "35276638",
-            "size": "57499134967"
         },
         "files": []
     }
