@@ -981,7 +981,8 @@
                 "metadata": {
                     "year": "2018",
                     "isMC": true,
-                    "xsec": 377.96
+                    "xsec": 377.96,
+                    "sum_genweights": 104910440000.0
                 }
             },
             {
@@ -1034,7 +1035,8 @@
                 "metadata": {
                     "year": "2018",
                     "isMC": true,
-                    "xsec": 19.6
+                    "xsec": 19.6,
+                    "sum_genweights": 365675840.0
                 }
             },
             {
@@ -1087,7 +1089,8 @@
                 "metadata": {
                     "year": "2018",
                     "isMC": true,
-                    "xsec": 19.6
+                    "xsec": 19.6,
+                    "sum_genweights": 355946080.0
                 }
             },
             {
@@ -1140,7 +1143,8 @@
                 "metadata": {
                     "year": "2018",
                     "isMC": true,
-                    "xsec": 136.02
+                    "xsec": 136.02,
+                    "sum_genweights": 18955983000.0
                 }
             },
             {
@@ -1193,7 +1197,8 @@
                 "metadata": {
                     "year": "2018",
                     "isMC": true,
-                    "xsec": 80.95
+                    "xsec": 80.95,
+                    "sum_genweights": 6114950000.0
                 }
             },
             {
