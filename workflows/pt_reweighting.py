@@ -12,6 +12,7 @@ import correctionlib.convert
 
 from workflows.fatjet_base import fatjetBaseProcessor
 from pocket_coffea.utils.configurator import Configurator
+from lib.sv import *
 from config.fatjet_base.custom.cuts import get_ptmsd, mutag_fatjet_sel, mutag_subjet_sel
 
 def dense_axes(h):
@@ -38,21 +39,31 @@ def get_axis_items(h, axis_name):
     axis = h.axes[axis_name]
     return list(axis.value(range(axis.size)))
 
-def get_data_mc_ratio(h1, h2, h_diff):
-    if type(h1) == hist.Stack:
-        h1 = stack_sum(h1)
-    if type(h2) == hist.Stack:
-        h2 = stack_sum(h2)
+def get_data_mc_ratio(h_data, h_qcd, h_diff):
+    if type(h_data) == hist.Stack:
+        h_data = stack_sum(h_data)
+    if type(h_qcd) == hist.Stack:
+        h_qcd = stack_sum(h_qcd)
     if type(h_diff) == hist.Stack:
         h_diff = stack_sum(h_diff)
-    num = h1.values()
-    den = h2.values()
+    data = h_data.values()
+    qcd = h_qcd.values()
     diff = h_diff.values()
-    ratio = (num - diff) / den
-    unc = np.sqrt(num - diff) / den
+    num = data - diff
+    den = qcd
+    ratio = num / den
+    sumw2_num = h_data.variances() + h_diff.variances()
+    sumw2_den = h_qcd.variances()
+    # Statistical uncertainty on the reweighting SF taking into account
+    # the uncertainty on data, QCD, top and WJets
+    unc = np.sqrt( sumw2_num/den**2 + (num**2/den**4)*sumw2_den )
+    # Statistical uncertainty on the reweighting SF taking into account
+    # the uncertainty on data and QCD only
+    unc_no_diff = np.sqrt( data/den**2 + (num**2/den**4)*sumw2_den )
     unc[np.isnan(unc)] = np.inf
+    unc_no_diff[np.isnan(unc_no_diff)] = np.inf
 
-    return ratio, unc
+    return ratio, unc, unc_no_diff
 
 def overwrite_check(outfile):
     path = outfile
@@ -69,16 +80,16 @@ class ptReweightProcessor(fatjetBaseProcessor):
     def __init__(self, cfg: Configurator):
         super().__init__(cfg)
         self.pt_eta_2d_maps = [
-            'FatJetGoodNMuon1_pt_eta',# 'FatJetGoodNMuon1_pt_eta_bineta0p40', 'FatJetGoodNMuon1_pt_eta_binpt20', 'FatJetGoodNMuon1_pt_eta_binpt20_bineta0p40',
-            'FatJetGoodNMuon2_pt_eta',# 'FatJetGoodNMuon2_pt_eta_bineta0p40', 'FatJetGoodNMuon2_pt_eta_binpt20', 'FatJetGoodNMuon2_pt_eta_binpt20_bineta0p40',
-            'FatJetGoodNMuonSJ1_pt_eta',# 'FatJetGoodNMuonSJ1_pt_eta_bineta0p40', 'FatJetGoodNMuonSJ1_pt_eta_binpt20', 'FatJetGoodNMuonSJ1_pt_eta_binpt20_bineta0p40',
-            'FatJetGoodNMuonSJUnique1_pt_eta',# 'FatJetGoodNMuonSJUnique1_pt_eta_bineta0p40', 'FatJetGoodNMuonSJUnique1_pt_eta_binpt20', 'FatJetGoodNMuonSJUnique1_pt_eta_binpt20_bineta0p40',
+            'FatJetGoodNMuon1_pt_eta',
+            'FatJetGoodNMuon2_pt_eta',
+            'FatJetGoodNMuonSJ1_pt_eta',
+            'FatJetGoodNMuonSJUnique1_pt_eta',
         ]
         self.pt_eta_tau21_3d_maps = [
-            'FatJetGoodNMuon1_pt_eta_tau21',# 'FatJetGoodNMuon1_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuon1_pt_eta_tau21_binpt20', 'FatJetGoodNMuon1_pt_eta_tau21_binpt20_bineta0p40',
-            'FatJetGoodNMuon2_pt_eta_tau21',# 'FatJetGoodNMuon2_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuon2_pt_eta_tau21_binpt20', 'FatJetGoodNMuon2_pt_eta_tau21_binpt20_bineta0p40',
-            'FatJetGoodNMuonSJ1_pt_eta_tau21',# 'FatJetGoodNMuonSJ1_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuonSJ1_pt_eta_tau21_binpt20', 'FatJetGoodNMuonSJ1_pt_eta_tau21_binpt20_bineta0p40',
-            'FatJetGoodNMuonSJUnique1_pt_eta_tau21',# 'FatJetGoodNMuonSJUnique1_pt_eta_tau21_bineta0p40', 'FatJetGoodNMuonSJUnique1_pt_eta_tau21_binpt20', 'FatJetGoodNMuonSJUnique1_pt_eta_tau21_binpt20_bineta0p40'
+            'FatJetGoodNMuon1_pt_eta_tau21', 'FatJetGoodNMuon1_pt_eta_tau21_bintau05',
+            'FatJetGoodNMuon2_pt_eta_tau21', 'FatJetGoodNMuon2_pt_eta_tau21_bintau05',
+            'FatJetGoodNMuonSJ1_pt_eta_tau21', 'FatJetGoodNMuonSJ1_pt_eta_tau21_bintau05',
+            'FatJetGoodNMuonSJUnique1_pt_eta_tau21', 'FatJetGoodNMuonSJUnique1_pt_eta_tau21_bintau05',
         ]
         for histname in self.pt_eta_2d_maps + self.pt_eta_tau21_3d_maps:
             if not histname in self.cfg.variables.keys():
@@ -86,8 +97,26 @@ class ptReweightProcessor(fatjetBaseProcessor):
 
     def apply_object_preselection(self, variation):
         super().apply_object_preselection(variation)
-        pt_min = 450.
+
+        pt_min = 350.
         msd = 40.
+        cuts = [get_ptmsd(pt_min, msd)]
+        masks = [cut.get_mask(self.events) for cut in cuts]
+        mask_total = ak.ones_like(masks[0], dtype=bool)
+        for mask in masks:
+            mask_total = mask_total & mask
+
+        # Apply (pt, msd) cuts
+        self.events["FatJetGood"] = self.events.FatJetGood[mask_total]
+        
+        # Restrict analysis to leading and subleading jets only
+        self.events["FatJetGood"] = self.events.FatJetGood[ak.local_index(self.events.FatJetGood, axis=1) < 2]
+
+        # Label leading and subleading AK8 jets BEFORE muon tagging selection
+        # Leading: pos=0, Subleading: pos=1
+        self.events["FatJetGood"] = ak.with_field(self.events["FatJetGood"], ak.local_index(self.events["FatJetGood"], axis=1), "pos")
+
+        # Build 4 distinct AK8 jet collections with 4 different muon tagging scenarios
         cuts_dict = {
             "FatJetGoodNMuon1" : [get_ptmsd(pt_min, msd), mutag_fatjet_sel(nmu=1)],
             "FatJetGoodNMuon2" : [get_ptmsd(pt_min, msd), mutag_fatjet_sel(nmu=2)],
@@ -101,12 +130,28 @@ class ptReweightProcessor(fatjetBaseProcessor):
             for mask in masks:
                 mask_total = mask_total & mask
             self.events[coll] = self.events.FatJetGood[mask_total]
-            self.events[coll] = ak.with_field(self.events[coll], ak.local_index(self.events[coll].pt), "pos")
+            # Restrict analysis to leading and subleading jets only, for each jet collection
+            self.events[coll] = self.events[coll][ak.local_index(self.events[coll], axis=1) < 2]
 
     def count_objects(self, variation):
         super().count_objects(variation)
         for coll in self._ak8jet_collections:
             self.events[f"n{coll}"] = ak.num(self.events[coll])
+
+    def define_common_variables_after_presel(self, variation):
+
+        for coll in self._ak8jet_collections:
+
+            Xbb = self.events[coll].particleNetMD_Xbb
+            Xcc = self.events[coll].particleNetMD_Xcc
+            QCD = self.events[coll].particleNetMD_QCD
+            fatjet_fields = {
+                "particleNetMD_Xbb_QCD" : Xbb / (Xbb + QCD),
+                "particleNetMD_Xcc_QCD" : Xcc / (Xcc + QCD),
+            }
+
+            for field, value in fatjet_fields.items():
+                self.events[coll] = ak.with_field(self.events[coll], value, field)
 
     def pt_reweighting(self, accumulator, year, histname):
         h = accumulator['variables'][histname]
@@ -138,15 +183,25 @@ class ptReweightProcessor(fatjetBaseProcessor):
             stack_data = hist.Stack.from_dict(dict_data)
             if len(stack_data) > 1:
                 raise NotImplementedError
-            ratio, unc = get_data_mc_ratio(stack_data, stack_qcd_nominal, stack_vjets_top_nominal)
+            ratio, unc, unc_no_diff = get_data_mc_ratio(stack_data, stack_qcd_nominal, stack_vjets_top_nominal)
             mod_ratio  = np.nan_to_num(ratio)
-            if histname in self.pt_eta_2d_maps:
-                mod_ratio[mod_ratio == 0.0] = 1
+            mod_unc = np.nan_to_num(unc)
+            mod_unc_no_diff = np.nan_to_num(unc_no_diff)
+            #if histname in self.pt_eta_2d_maps:
+            #    mod_ratio[mod_ratio == 0.0] = 1
 
-            ratio_dict.update({ cat : mod_ratio })
+            ratio_dict[cat] = {}
+            ratio_dict[cat].update({ "nominal" : mod_ratio })
+            ratio_dict[cat].update({ "statUp" : mod_ratio + mod_unc / mod_ratio })
+            ratio_dict[cat].update({ "statDown" : mod_ratio - mod_unc / mod_ratio })
 
-        axis_category = hist.axis.StrCategory(list(ratio_dict.keys()), name="cat")
-        sfhist = hist.Hist(axis_category, *axes, data=np.stack(list(ratio_dict.values())))
+        categories = list(ratio_dict.keys())
+        variations = list(ratio_dict[categories[0]].keys())
+        axis_category = hist.axis.StrCategory(categories, name="cat")
+        axis_variation = hist.axis.StrCategory(variations, name="variation")
+        # Stack nominal, statUp, statDown maps for each category
+        stack_map = np.stack([list(ratio_dict[cat].values()) for cat in categories])
+        sfhist = hist.Hist(axis_category, axis_variation, *axes, data=stack_map)
         sfhist.label = "out"
         sfhist.name = f"{histname}_corr_{year}"
         description = "Reweighting SF matching the leading fatjet pT and eta MC distribution to data."
@@ -167,7 +222,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
         fout.close()
         print(f"Loading correction from {outfile_reweighting}...")
         cset = correctionlib.CorrectionSet.from_file(outfile_reweighting)
-        print("inclusive:")
+        print("(cat): inclusive,", "(var): nominal")
         pt_corr = cset[sfhist.name]
         pos  = np.array([0, 1, 0, 1, 0], dtype=int)
         pt  = np.array([50, 100, 400, 500, 1000], dtype=float)
@@ -182,7 +237,7 @@ class ptReweightProcessor(fatjetBaseProcessor):
             tau21 = np.array([0.1, 0.35, 0.65, 0.8, 0.9], dtype=float)
             print("tau21 =", tau21)
             args = (pos, pt, eta, tau21)
-        print(pt_corr.evaluate('inclusive', *args))
+        print(pt_corr.evaluate('inclusive', 'nominal', *args))
 
     def postprocess(self, accumulator):
         '''

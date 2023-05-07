@@ -13,45 +13,6 @@ from lib.sv import *
 from lib.muon_matching import muons_matched_to_fatjet, muon_matched_to_subjet
 from pocket_coffea.lib.hist_manager import Axis
 
-def pteta_reweighting(file, events, year):
-    '''Reweighting scale factor based on the leading fatjet pT, eta'''
-    cat = 'inclusive'
-    cset = correctionlib.CorrectionSet.from_file(file)
-    keys = list(cset.keys())
-    assert len(keys) == 1, f"The correction has {len(keys)} keys. The choice of the key is ambiguous."
-    key = list(cset.keys())[0]
-    pteta_corr = cset[key]
-
-    nfatjet  = ak.num(events.FatJetGood.pt)
-    pos = ak.flatten(ak.local_index(events.FatJetGood.pt))
-    pt  = ak.flatten(events.FatJetGood.pt)
-    eta = ak.flatten(events.FatJetGood.eta)
-
-    weight = pteta_corr.evaluate(cat, pos, pt, eta)
-    weight = ak.unflatten(weight, nfatjet)
-
-    return weight
-
-def ptetatau21_reweighting(file, events, year):
-    '''Reweighting scale factor based on the leading fatjet pT, eta, tau21'''
-    cat = 'inclusive'
-    cset = correctionlib.CorrectionSet.from_file(file)
-    keys = list(cset.keys())
-    assert len(keys) == 1, f"The correction has {len(keys)} keys. The choice of the key is ambiguous."
-    key = list(cset.keys())[0]
-    ptetatau21_corr = cset[key]
-
-    nfatjet  = ak.num(events.FatJetGood.pt)
-    pos = ak.flatten(ak.local_index(events.FatJetGood.pt))
-    pt = ak.flatten(events.FatJetGood.pt)
-    eta = ak.flatten(events.FatJetGood.eta)
-    tau21 = ak.flatten(events.FatJetGood.tau21)
-
-    weight = ptetatau21_corr.evaluate(cat, pos, pt, eta, tau21)
-    weight = ak.unflatten(weight, nfatjet)
-
-    return weight
-
 class fatjetBaseProcessor(BaseProcessorABC):
     def __init__(self, cfg: Configurator):
         super().__init__(cfg)
@@ -70,21 +31,6 @@ class fatjetBaseProcessor(BaseProcessorABC):
                 label="Year",
             )
         )
-        if not "histograms_to_reweigh" in self.cfg.workflow_options.keys():
-            raise Exception("The entry of the config file 'workflow_options' does not contain a key 'histograms_to_reweigh'. Please specify it in the config file.")
-        if not "reweighting_scheme" in self.cfg.workflow_options.keys():
-            raise Exception("The entry of the config file 'workflow_options' does not contain a key 'reweighting_scheme'. Please specify it in the config file.")
-        if not "reweighting_map" in self.cfg.workflow_options.keys():
-            raise Exception("The entry of the config file 'workflow_options' does not contain a key 'reweighting_map'. Please specify it in the config file.")
-        self.histograms_to_reweigh = self.cfg.workflow_options["histograms_to_reweigh"]
-        self.reweighting_scheme = self.cfg.workflow_options["reweighting_scheme"]
-        self.reweighting_map = self.cfg.workflow_options["reweighting_map"]
-        possible_schemes = ["pteta", "ptetatau21", None]
-        if not self.reweighting_scheme in possible_schemes:
-            raise Exception(f"The reweighting scheme '{self.reweighting_scheme}' does not exist. Please specify a reweighting scheme among {possible_schemes}.")
-        if self.reweighting_map != None:
-            if not os.path.exists(self.reweighting_map):
-                raise Exception(f"The reweighting map file '{self.reweighting_map}' does not exist. Please check the path of the reweighting map file.")
 
     def apply_object_preselection(self, variation):
         '''
@@ -126,9 +72,6 @@ class fatjetBaseProcessor(BaseProcessorABC):
         self.events["FatJetGood"], self.fatjetGoodMask = jet_selection(
             self.events, "FatJet", self.cfg.finalstate
         )
-
-        # Restrict analysis to leading and subleading jets only
-        self.events["FatJetGood"] = self.events.FatJetGood[ak.local_index(self.events.FatJetGood, axis=1) < 2]
 
         # Select here events with at least one FatJetGood
         self.events = self.events[ak.num(self.events.FatJetGood) >= 1]
@@ -232,17 +175,6 @@ class fatjetBaseProcessor(BaseProcessorABC):
             padded = padded[ak.local_index(self.events['FatJetGood'].pt)]
             self.events = ak.with_field(self.events, value_concat, field)
             self.events['FatJetGood'] = ak.with_field(self.events['FatJetGood'], padded, field)
-
-    def process_extra_before_presel(self, variation):
-        if self.histograms_to_reweigh == None:
-            return
-        if self._sample == "QCD_MuEnriched":
-            if self.reweighting_scheme == "pteta":
-                self.custom_histogram_weights = {k : pteta_reweighting(self.reweighting_map, self.events, self._year) for k in self.histograms_to_reweigh}
-            elif self.reweighting_scheme == "ptetatau21":
-                self.custom_histogram_weights = {k : ptetatau21_reweighting(self.reweighting_map, self.events, self._year) for k in self.histograms_to_reweigh}
-            elif self.reweighting_scheme == None:
-                return
 
     def fill_column_accumulators(self, variation):
         pass
