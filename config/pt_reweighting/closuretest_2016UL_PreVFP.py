@@ -2,15 +2,15 @@ from pocket_coffea.parameters.cuts.preselection_cuts import *
 from workflows.mutag_processor import mutagAnalysisProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
 from pocket_coffea.parameters.histograms import *
-from config.fatjet_base.custom.cuts import twojets_presel, mutag_fatjet_sel, get_ptmsd, get_nObj_minmsd, get_flavor
+from config.fatjet_base.custom.cuts import mutag_fatjet_sel, get_nObj_minmsd, get_flavor
 from config.fatjet_base.custom.functions import get_HLTsel
 
-samples = ["QCD_MuEnriched"#,
-           #"VJets",
-           #"SingleTop_ttbar",
-           #"GluGluHToBB",
-           #"GluGluHToCC",
-           #"DATA"
+samples = ["QCD_MuEnriched",
+           "VJets",
+           "SingleTop_ttbar",
+           "GluGluHToBB",
+           "GluGluHToCC",
+           "DATA"
            ]
 
 pt_min = 350.0
@@ -18,7 +18,7 @@ msd = 40.0
 
 common_cats = {
     "inclusive" : [passthrough],
-    f"mutag_fatjet_nmu-1" : [mutag_fatjet_sel(nmu=1)]
+    "mutag_fatjet_nmu-1" : [mutag_fatjet_sel(nmu=1)]
 }
 
 subsamples = {}
@@ -27,11 +27,11 @@ for s in filter(lambda x: 'DATA' not in x, samples):
 
 cfg =  {
     "dataset" : {
-        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local_TEST.json",
-                  #"datasets/MC_VJets_RunIISummer20UL.json",
-                  #"datasets/MC_top_RunIISummer20UL_local.json",
-                  #"datasets/MC_GluGluH_RunIISummer20UL_local.json",
-                  #"datasets/DATA_BTagMu_RunIISummer20UL_local.json"
+        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
+                  "datasets/MC_VJets_RunIISummer20UL.json",
+                  "datasets/MC_top_RunIISummer20UL_local.json",
+                  "datasets/MC_GluGluH_RunIISummer20UL_local.json",
+                  "datasets/DATA_BTagMu_RunIISummer20UL_local.json"
                   ],
         "filter" : {
             "samples": samples,
@@ -43,7 +43,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : mutagAnalysisProcessor,
-    "output"   : "output/test/closure_test/closuretest_2016_PreVFP_ggH_correct_pos",
+    "output"   : "output/pocket_coffea/closure_test/closuretest_2016_PreVFP_ggH_correct_pos",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {

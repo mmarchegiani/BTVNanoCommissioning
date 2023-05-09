@@ -73,14 +73,17 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
         pt = ak.flatten(self.events.FatJetGood.pt)
         eta = ak.flatten(self.events.FatJetGood.eta)
         tau21 = ak.flatten(self.events.FatJetGood.tau21)
-        print(pos)
 
         weight_dict = {"all" : {}, "1" : {}, "2" : {}}
         for var in ["nominal", "statUp", "statDown"]:
             w = corr.evaluate(cat, var, pos, pt, eta, tau21)
             weight_dict["all"][var] = ak.unflatten(w, nfatjet)
-            weight_dict["1"][var] = ak.flatten(weight_dict["all"][var][self.events.FatJetGood.pos == 0])
-            weight_dict["2"][var] = ak.flatten(weight_dict["all"][var][self.events.FatJetGood.pos == 1])
+            # Here we build the flattened custom weights for the leading and subleading jet collections.
+            # In order for the length of the weights array to match the number of the per-event mask,
+            # we set the weight to be 1 for the events that does not contain a jet with pos=0(1)
+            w_padded = ak.pad_none(weight_dict["all"][var], 2)
+            weight_dict["1"][var] = ak.fill_none(ak.firsts(weight_dict["all"]["nominal"][self.events.FatJetGood.pos == 0]), 1)
+            weight_dict["2"][var] = ak.fill_none(ak.firsts(weight_dict["all"]["nominal"][self.events.FatJetGood.pos == 1]), 1)
 
         # Here we store the dictionary for the custom weights, with the following content:
         # - pos = "all": the jagged array of weights of the full jet collection
