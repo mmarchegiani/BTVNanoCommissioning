@@ -74,6 +74,8 @@ class fatjetBaseProcessor(BaseProcessorABC):
         )
 
         # Select here events with at least one FatJetGood
+        # WARNING: Here we are applying a per-event selection asking for at least one AK8 jet in the event
+        # In this way, we can compute the number of MuonGood matched to the FatJetGood and its subjets
         self.events = self.events[ak.num(self.events.FatJetGood) >= 1]
 
         # Uniquely match muons to leading and subleading subjets

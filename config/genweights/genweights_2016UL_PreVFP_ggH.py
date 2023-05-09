@@ -1,74 +1,25 @@
-from pocket_coffea.parameters.cuts.preselection_cuts import *
-from workflows.genweights import genWeightsProcessor
+from pocket_coffea.parameters.cuts.preselection_cuts import passthrough
+from config.genweights.workflow import genWeightsProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
-from pocket_coffea.parameters.histograms import *
-from pocket_coffea.parameters.btag import btag_variations
-from pocket_coffea.lib.weights_manager import WeightCustom
-from pocket_coffea.lib.cartesian_categories import CartesianSelection, MultiCut
-from config.fatjet_base.custom.cuts import mutag_presel, get_ptbin, get_ptmsd, get_nObj_minmsd, get_flavor
-from config.fatjet_base.custom.functions import get_inclusive_wp, get_HLTsel
-from config.fatjet_base.custom.parameters.parameters import PtBinning, AK8TaggerWP, AK8Taggers
-from config.fatjet_base.custom.weights import pt_weight, pteta_weight
-import numpy as np
+from config.fatjet_base.custom.cuts import get_nObj_minmsd
+from config.fatjet_base.custom.functions import get_HLTsel
 
-PtBinning = PtBinning['UL']['2016_PreVFP']
-wps = AK8TaggerWP['UL']['2016_PreVFP']
-
-common_cats = {
-    "inclusive" : passthrough,
-    "pt350msd40" : get_ptmsd(350., 40.),
-    "pt350msd40_ptreweight" : get_ptmsd(350., 40.),
-    "pt450msd40" : get_ptmsd(450., 40.),
-    "pt450msd40_ptreweight" : get_ptmsd(450., 40.),
-}
-
-cuts_pt = []
-cuts_names_pt = []
-for pt_low, pt_high in PtBinning.values():
-    cuts_pt.append(get_ptbin(pt_low, pt_high))
-    cuts_names_pt.append(f'Pt-{pt_low}to{pt_high}')
-cuts_tagger = []
-cuts_names_tagger = []
-for tagger in AK8Taggers:
-    for wp in ["L", "M", "H"]:
-        for region in ["pass", "fail"]:
-            cuts_tagger.append(get_inclusive_wp(tagger, wps[tagger][wp], region))
-            cuts_names_tagger.append(f"msd40{tagger}{region}{wp}wp")
-
-multicuts = [
-    MultiCut(name="tagger",
-             cuts=cuts_tagger,
-             cuts_names=cuts_names_tagger),
-    MultiCut(name="pt",
-             cuts=cuts_pt,
-             cuts_names=cuts_names_pt),
-]
-
-samples = [
-          "GluGluHToBB",
-          "GluGluHToCC",
-           ]
-subsamples = {}
-for s in filter(lambda x: 'DATA' not in x, samples):
-    subsamples[s] = {f"{s}_{f}" : [get_flavor(f)] for f in ['l', 'c', 'b', 'cc', 'bb']}
+samples = ["GluGluHToBB",
+           "GluGluHToCC"]
 
 cfg =  {
     "dataset" : {
-        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
-                  "datasets/MC_GluGluH_RunIISummer20UL_local.json",
-                  "datasets/DATA_BTagMu_RunIISummer20UL_local.json"],
+        "jsons": ["datasets/MC_GluGluH_RunIISummer20UL_local.json"],
         "filter" : {
             "samples": samples,
             "samples_exclude" : [],
             "year": ['2016_PreVFP']
-        },
-        "subsamples": subsamples
+        }
     },
-    
 
     # Input and output files
     "workflow" : genWeightsProcessor,
-    "output"   : "output/test/genweights/genweights_2016UL_PreVFP_GluGluH",
+    "output"   : "output/pocket_coffea/genweights/genweights_2016UL_PreVFP_ggH",
     "workflow_options" : {},
 
     "run_options" : {
@@ -95,19 +46,19 @@ cfg =  {
     "finalstate" : "mutag",
     "skim": [get_nObj_min(1, 200., "FatJet"),
              get_nObj_minmsd(1, 30., "FatJet"),
-             get_nObj_min(2, 3., "Muon"),
+             get_nObj_min(1, 3., "Muon"),
              get_HLTsel("mutag")],
 
     "save_skimmed_files": None,
     
-    "preselections" : [mutag_presel, get_ptmsd(250, 40)],
-    "categories": CartesianSelection(multicuts=multicuts, common_cats=common_cats),
+    "preselections" : [passthrough],
+    "categories": {
+        "inclusive" : [passthrough]
+    },
 
     "weights": {
         "common": {
-            "inclusive": ["genWeight","lumi","XS",
-                          "pileup"#, "sf_L1prefiring"
-                          ],
+            "inclusive": [ ],
             "bycategory" : {
             }
         },
@@ -118,7 +69,7 @@ cfg =  {
     "variations": {
         "weights": {
             "common": {
-                "inclusive": [ "pileup" ],#, "sf_L1prefiring" ],
+                "inclusive": [ ],
                 "bycategory" : {
                 }
             },
@@ -127,7 +78,7 @@ cfg =  {
         },
         "shape": {
             "common":{
-                "inclusive": [ "JES_Total" ]
+                "inclusive": [ ]
             }
         }
     },
@@ -137,8 +88,3 @@ cfg =  {
     "columns" : {}
 
 }
-
-# Here we update the weights dictionary such that 3 cross-check categories are not pt-reweighted
-categories = cfg["categories"].categories
-categories_to_reweight = [ cat for cat in categories if cat not in ["inclusive", "pt350msd40", "pt450msd40"] ]
-cfg["weights"]["common"]["bycategory"] = { cat : [pt_weight] for cat in categories_to_reweight}

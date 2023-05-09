@@ -12,6 +12,7 @@ import correctionlib.convert
 
 from workflows.fatjet_base import fatjetBaseProcessor
 from pocket_coffea.utils.configurator import Configurator
+from pocket_coffea.lib.categorization import StandardSelection
 from lib.sv import *
 from config.fatjet_base.custom.cuts import get_ptmsd, mutag_fatjet_sel, mutag_subjet_sel
 
@@ -100,15 +101,19 @@ class ptReweightProcessor(fatjetBaseProcessor):
 
         pt_min = 350.
         msd = 40.
-        cuts = [get_ptmsd(pt_min, msd)]
-        masks = [cut.get_mask(self.events) for cut in cuts]
-        mask_total = ak.ones_like(masks[0], dtype=bool)
-        for mask in masks:
-            mask_total = mask_total & mask
+        cuts_fatjet = {"pt350msd40" : [get_ptmsd(pt_min, msd)]}
+        selection_fatjet = StandardSelection(cuts_fatjet)
+        selection_fatjet.prepare(
+            events=self.events,
+            year=self._year,
+            sample=self._sample,
+            isMC=self._isMC,
+        )
+        mask_fatjet = selection_fatjet.get_mask("pt350msd40")
 
         # Apply (pt, msd) cuts
-        self.events["FatJetGood"] = self.events.FatJetGood[mask_total]
-        
+        self.events["FatJetGood"] = self.events.FatJetGood[mask_fatjet]
+
         # Restrict analysis to leading and subleading jets only
         self.events["FatJetGood"] = self.events.FatJetGood[ak.local_index(self.events.FatJetGood, axis=1) < 2]
 
@@ -117,21 +122,25 @@ class ptReweightProcessor(fatjetBaseProcessor):
         self.events["FatJetGood"] = ak.with_field(self.events["FatJetGood"], ak.local_index(self.events["FatJetGood"], axis=1), "pos")
 
         # Build 4 distinct AK8 jet collections with 4 different muon tagging scenarios
-        cuts_dict = {
+        cuts_mutag = {
             "FatJetGoodNMuon1" : [get_ptmsd(pt_min, msd), mutag_fatjet_sel(nmu=1)],
             "FatJetGoodNMuon2" : [get_ptmsd(pt_min, msd), mutag_fatjet_sel(nmu=2)],
             "FatJetGoodNMuonSJ1" : [get_ptmsd(pt_min, msd), mutag_subjet_sel(unique_matching=False)],
             "FatJetGoodNMuonSJUnique1" : [get_ptmsd(pt_min, msd), mutag_subjet_sel(unique_matching=True)],
         }
-        self._ak8jet_collections = list(cuts_dict.keys())
-        for coll, cuts in cuts_dict.items():
-            masks = [cut.get_mask(self.events) for cut in cuts]
-            mask_total = ak.ones_like(masks[0], dtype=bool)
-            for mask in masks:
-                mask_total = mask_total & mask
-            self.events[coll] = self.events.FatJetGood[mask_total]
-            # Restrict analysis to leading and subleading jets only, for each jet collection
-            self.events[coll] = self.events[coll][ak.local_index(self.events[coll], axis=1) < 2]
+        selection_mutag = StandardSelection(cuts_mutag)
+        selection_mutag.prepare(
+            events=self.events,
+            year=self._year,
+            sample=self._sample,
+            isMC=self._isMC,
+        )
+        self._ak8jet_collections = list(cuts_mutag.keys())
+        for coll in self._ak8jet_collections:
+            mask_mutag = selection_mutag.get_mask(coll)
+
+            # Apply muon tagging to AK8 jet collection
+            self.events[coll] = self.events.FatJetGood[mask_mutag]
 
     def count_objects(self, variation):
         super().count_objects(variation)
@@ -192,8 +201,8 @@ class ptReweightProcessor(fatjetBaseProcessor):
 
             ratio_dict[cat] = {}
             ratio_dict[cat].update({ "nominal" : mod_ratio })
-            ratio_dict[cat].update({ "statUp" : mod_ratio + mod_unc / mod_ratio })
-            ratio_dict[cat].update({ "statDown" : mod_ratio - mod_unc / mod_ratio })
+            ratio_dict[cat].update({ "statUp" : mod_ratio + mod_unc })
+            ratio_dict[cat].update({ "statDown" : mod_ratio - mod_unc })
 
         categories = list(ratio_dict.keys())
         variations = list(ratio_dict[categories[0]].keys())
