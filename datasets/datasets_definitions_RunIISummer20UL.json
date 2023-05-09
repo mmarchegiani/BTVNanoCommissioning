@@ -288,8 +288,8 @@
                     "year": "2018",
                     "isMC": true,
                     "xsec": 619.3,
-                   "sum_genweights": 58771420.0
-        }
+                    "sum_genweights": 58771420.0
+                }
             },
             {
                 "das_names": [
@@ -300,8 +300,8 @@
                     "year": "2017",
                     "isMC": true,
                     "xsec": 619.3,
-                   "sum_genweights": 58573944.0
-        }
+                    "sum_genweights": 58573944.0
+                }
             },
             {
                 "das_names": [
@@ -313,7 +313,7 @@
                     "isMC": true,
                     "xsec": 619.3,
                     "sum_genweights": 29908656.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -343,7 +343,7 @@
                     "isMC": true,
                     "xsec": 59.24,
                     "sum_genweights": 38645928.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -355,7 +355,7 @@
                     "isMC": true,
                     "xsec": 59.24,
                     "sum_genweights": 39816956.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -367,7 +367,7 @@
                     "isMC": true,
                     "xsec": 59.24,
                     "sum_genweights": 14220706.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -397,7 +397,7 @@
                     "isMC": true,
                     "xsec": 18.21,
                     "sum_genweights": 37158776.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -409,7 +409,7 @@
                     "isMC": true,
                     "xsec": 18.21,
                     "sum_genweights": 39326156.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -421,7 +421,7 @@
                     "isMC": true,
                     "xsec": 18.21,
                     "sum_genweights": 18763140.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -451,7 +451,7 @@
                     "isMC": true,
                     "xsec": 3.275,
                     "sum_genweights": 78314176.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -463,7 +463,7 @@
                     "isMC": true,
                     "xsec": 3.275,
                     "sum_genweights": 78133744.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -475,7 +475,7 @@
                     "isMC": true,
                     "xsec": 3.275,
                     "sum_genweights": 38921528.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -505,7 +505,7 @@
                     "isMC": true,
                     "xsec": 1.078,
                     "sum_genweights": 27369976.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -517,7 +517,7 @@
                     "isMC": true,
                     "xsec": 1.078,
                     "sum_genweights": 27537496.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -529,7 +529,7 @@
                     "isMC": true,
                     "xsec": 1.078,
                     "sum_genweights": 14243204.0
-        }
+                }
             },
             {
                 "das_names": [
@@ -541,7 +541,7 @@
                     "isMC": true,
                     "xsec": 1.078,
                     "sum_genweights": 33880928.0
-        }
+                }
             }
         ]
     },
@@ -557,7 +557,8 @@
                 "metadata": {
                     "year": "2018",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 234372.0
                 }
             },
             {
@@ -568,7 +569,8 @@
                 "metadata": {
                     "year": "2017",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 234354.078125
                 }
             },
             {
@@ -579,7 +581,8 @@
                 "metadata": {
                     "year": "2016_PostVFP",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 107495.9453125
                 }
             },
             {
@@ -590,7 +593,8 @@
                 "metadata": {
                     "year": "2016_PreVFP",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 127323.3203125
                 }
             }
         ]
@@ -607,7 +611,8 @@
                 "metadata": {
                     "year": "2018",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 235767.53125
                 }
             },
             {
@@ -618,7 +623,8 @@
                 "metadata": {
                     "year": "2017",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 234358.765625
                 }
             },
             {
@@ -629,7 +635,8 @@
                 "metadata": {
                     "year": "2016_PostVFP",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 108453.703125
                 }
             },
             {
@@ -640,7 +647,8 @@
                 "metadata": {
                     "year": "2016_PreVFP",
                     "isMC": true,
-                    "xsec": 27.8
+                    "xsec": 27.8,
+                    "sum_genweights": 127310.09375
                 }
             }
         ]
