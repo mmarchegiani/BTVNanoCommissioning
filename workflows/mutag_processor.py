@@ -81,7 +81,6 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
             # Here we build the flattened custom weights for the leading and subleading jet collections.
             # In order for the length of the weights array to match the number of the per-event mask,
             # we set the weight to be 1 for the events that does not contain a jet with pos=0(1)
-            w_padded = ak.pad_none(weight_dict["all"][var], 2)
             weight_dict["1"][var] = ak.fill_none(ak.firsts(weight_dict["all"]["nominal"][self.events.FatJetGood.pos == 0]), 1)
             weight_dict["2"][var] = ak.fill_none(ak.firsts(weight_dict["all"]["nominal"][self.events.FatJetGood.pos == 1]), 1)
 
