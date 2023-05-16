@@ -1,7 +1,5 @@
-import os
 import awkward as ak
 from collections import defaultdict
-import correctionlib
 
 from pocket_coffea.workflows.base import BaseProcessorABC
 from pocket_coffea.utils.configurator import Configurator
@@ -9,7 +7,7 @@ from pocket_coffea.lib.leptons import lepton_selection
 
 from config.fatjet_base.custom.leptons import lepton_selection_noniso
 from config.fatjet_base.custom.jets import jet_selection
-from lib.sv import *
+from lib.sv import sv_matched_to_fatjet, get_sumcorrmass
 from lib.muon_matching import muons_matched_to_fatjet, muon_matched_to_subjet
 from pocket_coffea.lib.hist_manager import Axis
 
@@ -114,33 +112,26 @@ class fatjetBaseProcessor(BaseProcessorABC):
 
     def define_common_variables_after_presel(self, variation):
         
-        fatjet_sv_fields = {
-            "nsv1"    : get_nsv(self.events.FatJetGood, self.events.SV, pos=0),
-            "nsv2"    : get_nsv(self.events.FatJetGood, self.events.SV, pos=1),
-        }
+        # Match SV to AK8 jets
+        self.events["SVMatchedToFatJetGood"] = sv_matched_to_fatjet(self.events)
 
-        for field, value in fatjet_sv_fields.items():
-            self.events = ak.with_field(self.events, value, field)
-
+        # Compute final particleNetMD scores
         Xbb = self.events.FatJetGood.particleNetMD_Xbb
         Xcc = self.events.FatJetGood.particleNetMD_Xcc
         QCD = self.events.FatJetGood.particleNetMD_QCD
+        sumcorrSVmass, logsumcorrSVmass = get_sumcorrmass(self.events)
         fatjet_fields = {
-            "subjet1" : self.events.FatJetGood.subjets[:, :, 0],
-            "subjet2" : self.events.FatJetGood.subjets[:, :, 1],
+            "nSVMatchedToFatJetGood": ak.count(self.events["SVMatchedToFatJetGood"].pt, axis=2),
             "particleNetMD_Xbb_QCD" : Xbb / (Xbb + QCD),
             "particleNetMD_Xcc_QCD" : Xcc / (Xcc + QCD),
+            "sumcorrSVmass" : sumcorrSVmass,
+            "logsumcorrSVmass" : logsumcorrSVmass,
         }
 
         for field, value in fatjet_fields.items():
             self.events["FatJetGood"] = ak.with_field(self.events.FatJetGood, value, field)
 
-        self.events.FatJetGood.subjet1 = ak.with_field(self.events.FatJetGood.subjet1, self.events.FatJetGood.subjet1.nearest(self.events.MuonGood, threshold=0.4)[:, 0], "MuonLeading")
-        self.events.FatJetGood.subjet2 = ak.with_field(self.events.FatJetGood.subjet2, self.events.FatJetGood.subjet2.nearest(self.events.MuonGood, threshold=0.4)[:, 0], "MuonLeading")
-
-        # Define SV observables
-
-        #self.events.SV = self.events.SV[get_sv_in_jet(self.events.FatJetGood[:,0], self.events.SV)]
+        """
         sv_in_jet1 = self.events.SV[get_sv_in_jet(self.events.FatJetGood, self.events.SV, pos=0)]
         sv_in_jet2 = self.events.SV[get_sv_in_jet(self.events.FatJetGood, self.events.SV, pos=1)]
         i1_maxPt     = ak.argsort(sv_in_jet1.pt, ascending=False)
@@ -177,6 +168,7 @@ class fatjetBaseProcessor(BaseProcessorABC):
             padded = padded[ak.local_index(self.events['FatJetGood'].pt)]
             self.events = ak.with_field(self.events, value_concat, field)
             self.events['FatJetGood'] = ak.with_field(self.events['FatJetGood'], padded, field)
+        """
 
     def fill_column_accumulators(self, variation):
         pass

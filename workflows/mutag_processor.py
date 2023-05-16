@@ -9,7 +9,7 @@ from pocket_coffea.utils.configurator import Configurator
 from pocket_coffea.lib.categorization import StandardSelection
 from pocket_coffea.parameters.jet_scale_factors import ptetatau21_reweighting
 from lib.sv import *
-from config.fatjet_base.custom.cuts import get_ptmsd, mutag_fatjet_sel
+from config.fatjet_base.custom.cuts import get_ptmsd
 
 class mutagAnalysisProcessor(fatjetBaseProcessor):
     def __init__(self, cfg: Configurator):
@@ -19,12 +19,11 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
         self.histograms_to_reweigh = self.cfg.workflow_options["histograms_to_reweigh"]
         self.weight_3d = defaultdict(dict)
 
-    def apply_object_preselection(self, variation):
+    def apply_object_preselection(self, variation, pt_min=350., msd=40.):
         super().apply_object_preselection(variation)
 
-        pt_min = 350.
-        msd = 40.
-        cuts_fatjet = {"pt350msd40" : [get_ptmsd(pt_min, msd)]}
+        mask_name = f"pt{int(pt_min)}msd{int(msd)}"
+        cuts_fatjet = {mask_name : [get_ptmsd(pt_min, msd)]}
         selection_fatjet = StandardSelection(cuts_fatjet)
         selection_fatjet.prepare(
             events=self.events,
@@ -32,7 +31,7 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
             sample=self._sample,
             isMC=self._isMC,
         )
-        mask_fatjet = selection_fatjet.get_mask("pt350msd40")
+        mask_fatjet = selection_fatjet.get_mask(mask_name)
 
         # Apply (pt, msd) cuts
         self.events["FatJetGood"] = self.events.FatJetGood[mask_fatjet]
