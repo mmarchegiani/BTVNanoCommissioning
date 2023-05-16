@@ -4,44 +4,16 @@ import collections
 import numpy as np
 import awkward as ak
 
+from .deltar_matching import run_deltar_matching
+
 def project(a, b):
     return a.dot(b)/b.dot(b) * b
 
-def get_nsv(jet, sv, pos, R=0.4):
-
-    # Compute the number of SV inside the subjet of the leading and subleading FatJet (nsv1, nsv2)
-    # and return the concatenated array
-    if pos == 0:
-        jet = jet[:,0]
-    elif pos == 1:
-        jet = ak.pad_none(jet,2)[:,1]
-    else:
-        raise Exception("Only the leading and subleading jets can be considered.")
-
-    sj1 = jet.subjets[:, 0]
-    sj2 = jet.subjets[:, 1]
-    sv_dr1 = sj1.delta_r(sv.p4)
-    sv_dr2 = sj2.delta_r(sv.p4)
-    nsv1 = ak.unflatten( ak.count(sv_dr1[sv_dr1 < R], axis=1), counts=1 )
-    nsv2 = ak.unflatten( ak.count(sv_dr2[sv_dr2 < R], axis=1), counts=1 )
-
-    return ak.concatenate((nsv1, nsv2), axis=1)
-
-def get_sv_in_jet(jet, sv, pos, R=0.8):
-
-    if pos == 0:
-        jet = jet[:,0]
-    elif pos == 1:
-        jet = ak.pad_none(jet,2)[:,1]
-    else:
-        raise Exception("Only the leading and subleading jets can be considered.")
-
-    sv_dr = jet.delta_r(sv.p4)
-    sv_in_jet = sv_dr < R
-    empty = ak.Array([ak.count(sv_in_jet)*[]])
-    sv_in_jet = ak.where(ak.is_none(sv_in_jet), empty, sv_in_jet)
-
-    return sv_in_jet
+def sv_matched_to_fatjet(events):
+    '''This function returns the collection of SV matched to the fatjets.
+    The output array has the same shape as the events.FatJetGood collection.
+    '''
+    return run_deltar_matching(events.FatJetGood, events.SV, radius=0.8)
 
 # N.B.: In the following the logarithm of the mass-like variables is set to -5 as default value,
 # when the corresponding mass value is 0. This way, the log(mass) histograms will be filled with
@@ -87,15 +59,16 @@ def get_sv1mass(sv, log=True):
     else:
         return sv1mass
 
-def get_sumcorrmass(sv, log=True):
+#def get_sumcorrmass(sv, log=True):
+def get_sumcorrmass(events, log=True):
     
-    nsv = ak.count(sv.pt, axis=1)
+    sv = events.SVMatchedToFatJetGood
     corrmass = np.sqrt(sv.p4.mass**2 + sv.p4.pt**2 * np.sin(sv.pAngle)**2) + sv.p4.pt * np.sin(sv.pAngle)
     sv['mass'] = corrmass
     sumcorrmass = sv.p4.sum().mass
 
     if log:
-        logsumcorrmass = ak.where(nsv < 1, -5, np.log(sumcorrmass))
+        logsumcorrmass = np.log(sumcorrmass)
         return sumcorrmass, logsumcorrmass
     else:
         return sumcorrmass
