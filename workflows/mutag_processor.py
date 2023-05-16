@@ -44,28 +44,13 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
         # Leading: pos=0, Subleading: pos=1
         self.events["FatJetGood"] = ak.with_field(self.events["FatJetGood"], ak.local_index(self.events["FatJetGood"], axis=1), "pos")
 
-        # Build 4 distinct AK8 jet collections with 4 different muon tagging scenarios
-        cuts_mutag = {
-            "FatJetGoodNMuon1" : [get_ptmsd(pt_min, msd), mutag_fatjet_sel(nmu=1)],
-        }
-        selection_mutag = StandardSelection(cuts_mutag)
-        selection_mutag.prepare(
-            events=self.events,
-            year=self._year,
-            sample=self._sample,
-            isMC=self._isMC,
-        )
-        mask_mutag = selection_mutag.get_mask("FatJetGoodNMuon1")
-
-        # Apply muon tagging to AK8 jet collection
-        self.events["FatJetGood"] = self.events.FatJetGood[mask_mutag]
-
     def ptetatau21_reweighting(self):
         '''Correction of jets observable by a 3D reweighting based on (pT, eta, tau21).
         The function stores the nominal, up and down weights in self.weight_3d,
         where the up/down variations are computed considering the statistical uncertainty on data and MC.'''
         cset = correctionlib.CorrectionSet.from_file(ptetatau21_reweighting[self._year])
-        corr = cset[f"FatJetGoodNMuon1_pt_eta_tau21_corr_{self._year}"]
+        key = list(cset.keys())[0]
+        corr = cset[key]
 
         cat = "inclusive"
         nfatjet  = ak.num(self.events.FatJetGood.pt)
