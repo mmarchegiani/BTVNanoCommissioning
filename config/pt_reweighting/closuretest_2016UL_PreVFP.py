@@ -2,7 +2,7 @@ from pocket_coffea.parameters.cuts.preselection_cuts import *
 from workflows.mutag_processor import mutagAnalysisProcessor
 from pocket_coffea.lib.cut_functions import get_nObj_min
 from pocket_coffea.parameters.histograms import *
-from config.fatjet_base.custom.cuts import mutag_fatjet_sel, get_nObj_minmsd, get_flavor
+from config.fatjet_base.custom.cuts import mutag_fatjet_sel, mutag_subjet_sel, get_nObj_minmsd, get_flavor
 from config.fatjet_base.custom.functions import get_HLTsel
 
 samples = ["QCD_MuEnriched",
@@ -18,7 +18,10 @@ msd = 40.0
 
 common_cats = {
     "inclusive" : [passthrough],
-    "mutag_fatjet_nmu-1" : [mutag_fatjet_sel(nmu=1)]
+    "mutag_fatjet_nmu-1" : [mutag_fatjet_sel(nmu=1)],
+    "mutag_fatjet_nmu-2" : [mutag_fatjet_sel(nmu=2)],
+    "mutag_subjet_nmu-2" : [mutag_subjet_sel(unique_matching=False)],
+    "mutag_subjet_unique_nmu-2" : [mutag_subjet_sel(unique_matching=True)]
 }
 
 subsamples = {}
@@ -43,7 +46,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : mutagAnalysisProcessor,
-    "output"   : "output/pocket_coffea/closure_test/closuretest_2016_PreVFP_ggH_correct_pos",
+    "output"   : "output/pocket_coffea/closure_test/closuretest_2016_PreVFP_bintau05",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -114,41 +117,27 @@ cfg =  {
    "variables":
     {
         **fatjet_hists(coll="FatJetGood"),
-        **fatjet_hists(coll="FatJetGood", pos=0),
-        **fatjet_hists(coll="FatJetGood", pos=1),
         "FatJetGood_pt" : HistConf([Axis(name=f"FatJetGood_pt", coll="FatJetGood", field="pt",
                                          label=r"FatJet $p_{T}$ [GeV]", bins=list(range(350, 1010, 10)))]),
         "FatJetGood_msoftdrop" : HistConf([Axis(name=f"FatJetGood_msoftdrop", coll="FatJetGood", field="msoftdrop",
                                          label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(40, 410, 10)))]),
-        "FatJetGood_pt_1" : HistConf([Axis(name=f"FatJetGood_pt", coll="FatJetGood", field="pt", pos=0,
-                                         label=r"FatJet $p_{T}$ [GeV]", bins=list(range(350, 1010, 10)))]),
-        "FatJetGood_msoftdrop_1" : HistConf([Axis(name=f"FatJetGood_msoftdrop", coll="FatJetGood", field="msoftdrop", pos=0,
-                                         label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(40, 410, 10)))]),
-        "FatJetGood_pt_2" : HistConf([Axis(name=f"FatJetGood_pt", coll="FatJetGood", field="pt", pos=1,
-                                         label=r"FatJet $p_{T}$ [GeV]", bins=list(range(350, 1010, 10)))]),
-        "FatJetGood_msoftdrop_2" : HistConf([Axis(name=f"FatJetGood_msoftdrop", coll="FatJetGood", field="msoftdrop", pos=1,
-                                         label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(40, 410, 10)))]),
-        #**sv_hists(coll="events"),
-        #**count_hist(name="nFatJetGood", coll="FatJetGood",bins=10, start=0, stop=10),
-        #"nMuonGoodMatchedToFatJetGood": HistConf(
-        #    [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToFatJetGood", label="Number of muons inside AK8 jet", bins=4, start=0, stop=4) ]
-        #),
-        #"nMuonGoodMatchedToSubJet": HistConf(
-        #    [ Axis(coll="FatJetGood", field="nMuonGoodMatchedToSubJet", label="Number of muons matched to subjet", bins=3, start=0, stop=3) ]
-        #),
-        #"nMuonGoodMatchedUniquelyToSubJet": HistConf(
-        #    [ Axis(coll="FatJetGood", field="nMuonGoodMatchedUniquelyToSubJet", label="Number of muons matched uniquely to subjet", bins=3, start=0, stop=3) ]
-        #),
     },
 
     "columns" : {}
 
 }
 
+axis_pos = Axis(name=f"FatJetGood_pos", coll="FatJetGood", field="pos", type="int", label=r"FatJet position", bins=2, start=0, stop=2)
+
+hists_2d = {}
+for histname, hist_cfg in cfg["variables"].items():
+    hists_2d[f"{histname}_pos"] = HistConf([axis_pos] + hist_cfg.axes)
+
+for histname, hist_cfg in hists_2d.items():
+    cfg["variables"][histname] = hists_2d[histname]
+
 # We reweigh histograms differently depending whether:
 # - The histogram contains the whole jet collection ("all")
 # - The histogram contains the leading jet collection ("1")
 # - The histogram contains the subleading jet collection ("2")
 cfg["workflow_options"]["histograms_to_reweigh"]["by_pos"]["all"] = [name for name in cfg["variables"].keys() if name.startswith("FatJetGood_") and not name.endswith(("_1", "_2"))]
-cfg["workflow_options"]["histograms_to_reweigh"]["by_pos"]["1"] = [name for name in cfg["variables"].keys() if name.startswith("FatJetGood_") and name.endswith("_1")]
-cfg["workflow_options"]["histograms_to_reweigh"]["by_pos"]["2"] = [name for name in cfg["variables"].keys() if name.startswith("FatJetGood_") and name.endswith("_2")]
