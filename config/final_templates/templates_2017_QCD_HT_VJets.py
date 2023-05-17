@@ -7,8 +7,8 @@ from config.fatjet_base.custom.cuts import get_nObj_minmsd, get_flavor, get_ptbi
 from config.fatjet_base.custom.functions import get_HLTsel, get_inclusive_wp
 from parameters import PtBinning, AK8TaggerWP, AK8Taggers
 
-PtBinning = PtBinning['UL']['2018']
-wps = AK8TaggerWP['UL']['2018']
+PtBinning = PtBinning['UL']['2017']
+wps = AK8TaggerWP['UL']['2017']
 pt_min = 350.
 msd = 40.
 
@@ -38,11 +38,8 @@ multicuts = [
              cuts_names=cuts_names_pt),
 ]
 
-samples = ["QCD_MuEnriched",
-           "QCD_HT",
+samples = ["QCD_HT",
            "VJets",
-           "SingleTop_ttbar",
-           "DATA"
            ]
 
 subsamples = {}
@@ -51,23 +48,20 @@ for s in filter(lambda x: 'DATA' not in x, samples):
 
 cfg =  {
     "dataset" : {
-        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
-                  "datasets/MC_QCD_HT_RunIISummer20UL.json",
+        "jsons": ["datasets/MC_QCD_HT_RunIISummer20UL.json",
                   "datasets/MC_VJets_RunIISummer20UL.json",
-                  "datasets/MC_top_RunIISummer20UL_local.json",
-                  "datasets/DATA_BTagMu_RunIISummer20UL_local.json"
                   ],
         "filter" : {
             "samples": samples,
             "samples_exclude" : [],
-            "year": ['2018']
+            "year": ['2017']
         },
         "subsamples" : subsamples
     },
 
     # Input and output files
     "workflow" : mutagAnalysisOneMuonInAK8Processor,
-    "output"   : "output/pocket_coffea/final_templates/templates_2018",
+    "output"   : "output/pocket_coffea/final_templates/templates_2017_QCD_HT_VJets",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -82,9 +76,9 @@ cfg =  {
         "executor"       : "dask/slurm",
         "workers"        : 1,
         "scaleout"       : 200,
-        "queue"          : "standard",
-        "walltime"       : "12:00:00",
-        "mem_per_worker" : "12GB", # GB
+        "queue"          : "long",
+        "walltime"       : "72:00:00",
+        "mem_per_worker" : "8GB", # GB
         "exclusive"      : False,
         "chunk"          : 400000,
         "retries"        : 50,
@@ -110,7 +104,7 @@ cfg =  {
     "weights": {
         "common": {
             "inclusive": ["genWeight","lumi","XS",
-                          "pileup",
+                          "pileup", "sf_L1prefiring",
                           "sf_ptetatau21_reweighting"
                           ],
             "bycategory" : {
@@ -123,16 +117,20 @@ cfg =  {
     "variations": {
         "weights": {
             "common": {
-                "inclusive": ["pileup",
+                "inclusive": ["pileup", "sf_L1prefiring",
                               "sf_ptetatau21_reweighting"
                               ],
                 "bycategory" : {
                 }
             },
-        "bysample": {
-        }    
+            "bysample": {
+            }
         },
-        
+        "shape": {
+            "common":{
+                "inclusive": [ "JES_Total", "JER" ]
+            }
+        }
     },
 
    "variables":

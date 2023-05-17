@@ -7,8 +7,8 @@ from config.fatjet_base.custom.cuts import get_nObj_minmsd, get_flavor, get_ptbi
 from config.fatjet_base.custom.functions import get_HLTsel, get_inclusive_wp
 from parameters import PtBinning, AK8TaggerWP, AK8Taggers
 
-PtBinning = PtBinning['UL']['2018']
-wps = AK8TaggerWP['UL']['2018']
+PtBinning = PtBinning['UL']['2017']
+wps = AK8TaggerWP['UL']['2017']
 pt_min = 350.
 msd = 40.
 
@@ -60,14 +60,14 @@ cfg =  {
         "filter" : {
             "samples": samples,
             "samples_exclude" : [],
-            "year": ['2018']
+            "year": ['2017']
         },
         "subsamples" : subsamples
     },
 
     # Input and output files
     "workflow" : mutagAnalysisOneMuonInAK8Processor,
-    "output"   : "output/pocket_coffea/final_templates/templates_2018",
+    "output"   : "output/pocket_coffea/final_templates/templates_2017",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -110,7 +110,7 @@ cfg =  {
     "weights": {
         "common": {
             "inclusive": ["genWeight","lumi","XS",
-                          "pileup",
+                          "pileup", "sf_L1prefiring",
                           "sf_ptetatau21_reweighting"
                           ],
             "bycategory" : {
@@ -123,7 +123,7 @@ cfg =  {
     "variations": {
         "weights": {
             "common": {
-                "inclusive": ["pileup",
+                "inclusive": ["pileup", "sf_L1prefiring",
                               "sf_ptetatau21_reweighting"
                               ],
                 "bycategory" : {
