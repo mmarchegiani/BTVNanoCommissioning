@@ -63,7 +63,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : mutagAnalysisOneMuonInAK8Processor,
-    "output"   : "output/pocket_coffea/final_templates/templates_2016_PostVFP_QCD_MuEnriched_top_DATA",
+    "output"   : "output/pocket_coffea/final_templates/templates_2016_PostVFP_QCD_MuEnriched_top_DATA_withJES",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -142,7 +142,7 @@ cfg =  {
                                          label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10)))]),
         "FatJetGood_msoftdrop" : HistConf([Axis(name=f"FatJetGood_msoftdrop", coll="FatJetGood", field="msoftdrop",
                                          label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10)))]),
-        "FatJetGood_logsumcorrmass": HistConf(
+        "FatJetGood_logsumcorrSVmass": HistConf(
             [ Axis(coll="FatJetGood", field="logsumcorrSVmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=42, start=-2.4, stop=6) ]
         ),
         "nSVMatchedToFatJetGood": HistConf(
@@ -151,6 +151,18 @@ cfg =  {
         "FatJetGood_logsumcorrSVmass_tau21": HistConf(
             [ Axis(coll="FatJetGood", field="logsumcorrSVmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=42, start=-2.4, stop=6),
               Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
+        ),
+        "FatJetGood_pt_tau21": HistConf(
+            [ Axis(coll="FatJetGood", field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10))),
+              Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
+        ),
+        "FatJetGood_msoftdrop_tau21": HistConf(
+            [ Axis(coll="FatJetGood", field="msoftdrop", label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10))),
+              Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
+        ),
+        "FatJetGood_msoftdrop_pt": HistConf(
+            [ Axis(coll="FatJetGood", field="msoftdrop", label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10))),
+              Axis(coll="FatJetGood", field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10))) ]
         ),
     },
 

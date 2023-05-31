@@ -142,7 +142,7 @@ cfg =  {
                                          label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10)))]),
         "FatJetGood_msoftdrop" : HistConf([Axis(name=f"FatJetGood_msoftdrop", coll="FatJetGood", field="msoftdrop",
                                          label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10)))]),
-        "FatJetGood_logsumcorrmass": HistConf(
+        "FatJetGood_logsumcorrSVmass": HistConf(
             [ Axis(coll="FatJetGood", field="logsumcorrSVmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=42, start=-2.4, stop=6) ]
         ),
         "nSVMatchedToFatJetGood": HistConf(
