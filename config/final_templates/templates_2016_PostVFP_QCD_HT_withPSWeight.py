@@ -7,8 +7,8 @@ from config.fatjet_base.custom.cuts import get_nObj_minmsd, get_flavor, get_ptbi
 from config.fatjet_base.custom.functions import get_HLTsel, get_inclusive_wp
 from parameters import PtBinning, AK8TaggerWP, AK8Taggers
 
-PtBinning = PtBinning['UL']['2017']
-wps = AK8TaggerWP['UL']['2017']
+PtBinning = PtBinning['UL']['2016_PostVFP']
+wps = AK8TaggerWP['UL']['2016_PostVFP']
 pt_min = 350.
 msd = 40.
 
@@ -38,9 +38,7 @@ multicuts = [
              cuts_names=cuts_names_pt),
 ]
 
-samples = ["QCD_MuEnriched",
-           "SingleTop_ttbar",
-           "DATA"
+samples = ["QCD_HT",
            ]
 
 subsamples = {}
@@ -49,21 +47,20 @@ for s in filter(lambda x: 'DATA' not in x, samples):
 
 cfg =  {
     "dataset" : {
-        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
-                  "datasets/MC_top_RunIISummer20UL_local.json",
-                  "datasets/DATA_BTagMu_RunIISummer20UL_local.json"
+        "jsons": ["datasets/MC_QCD_HT_RunIISummer20UL_redirector.json",
+                  "datasets/MC_VJets_RunIISummer20UL.json",
                   ],
         "filter" : {
             "samples": samples,
             "samples_exclude" : [],
-            "year": ['2017']
+            "year": ['2016_PostVFP']
         },
         "subsamples" : subsamples
     },
 
     # Input and output files
     "workflow" : mutagAnalysisOneMuonInAK8Processor,
-    "output"   : "output/pocket_coffea/final_templates/templates_2017_QCD_MuEnriched_top_DATA_withJES",
+    "output"   : "output/pocket_coffea/final_templates/templates_2016_PostVFP_QCD_HT_withPSWeight",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -77,7 +74,7 @@ cfg =  {
     "run_options" : {
         "executor"       : "dask/slurm",
         "workers"        : 1,
-        "scaleout"       : 250,
+        "scaleout"       : 200,
         "queue"          : "standard",
         "walltime"       : "12:00:00",
         "mem_per_worker" : "12GB", # GB
@@ -107,7 +104,8 @@ cfg =  {
         "common": {
             "inclusive": ["genWeight","lumi","XS",
                           "pileup", "sf_L1prefiring",
-                          "sf_ptetatau21_reweighting"
+                          "sf_ptetatau21_reweighting",
+                          "psWeight_isr", "psWeight_fsr"
                           ],
             "bycategory" : {
             }
@@ -120,7 +118,8 @@ cfg =  {
         "weights": {
             "common": {
                 "inclusive": ["pileup", "sf_L1prefiring",
-                              "sf_ptetatau21_reweighting"
+                              "sf_ptetatau21_reweighting",
+                              "psWeight_isr", "psWeight_fsr"
                               ],
                 "bycategory" : {
                 }

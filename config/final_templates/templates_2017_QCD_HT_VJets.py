@@ -48,7 +48,7 @@ for s in filter(lambda x: 'DATA' not in x, samples):
 
 cfg =  {
     "dataset" : {
-        "jsons": ["datasets/MC_QCD_HT_RunIISummer20UL.json",
+        "jsons": ["datasets/MC_QCD_HT_RunIISummer20UL_redirector.json",
                   "datasets/MC_VJets_RunIISummer20UL.json",
                   ],
         "filter" : {
@@ -61,7 +61,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : mutagAnalysisOneMuonInAK8Processor,
-    "output"   : "output/pocket_coffea/final_templates/templates_2017_QCD_HT_VJets",
+    "output"   : "output/pocket_coffea/final_templates/templates_2017_QCD_HT_VJets_withJES",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -75,10 +75,10 @@ cfg =  {
     "run_options" : {
         "executor"       : "dask/slurm",
         "workers"        : 1,
-        "scaleout"       : 200,
-        "queue"          : "long",
-        "walltime"       : "72:00:00",
-        "mem_per_worker" : "8GB", # GB
+        "scaleout"       : 250,
+        "queue"          : "standard",
+        "walltime"       : "12:00:00",
+        "mem_per_worker" : "12GB", # GB
         "exclusive"      : False,
         "chunk"          : 400000,
         "retries"        : 50,
@@ -140,7 +140,7 @@ cfg =  {
                                          label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10)))]),
         "FatJetGood_msoftdrop" : HistConf([Axis(name=f"FatJetGood_msoftdrop", coll="FatJetGood", field="msoftdrop",
                                          label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10)))]),
-        "FatJetGood_logsumcorrmass": HistConf(
+        "FatJetGood_logsumcorrSVmass": HistConf(
             [ Axis(coll="FatJetGood", field="logsumcorrSVmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=42, start=-2.4, stop=6) ]
         ),
         "nSVMatchedToFatJetGood": HistConf(
@@ -149,6 +149,18 @@ cfg =  {
         "FatJetGood_logsumcorrSVmass_tau21": HistConf(
             [ Axis(coll="FatJetGood", field="logsumcorrSVmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=42, start=-2.4, stop=6),
               Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
+        ),
+        "FatJetGood_pt_tau21": HistConf(
+            [ Axis(coll="FatJetGood", field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10))),
+              Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
+        ),
+        "FatJetGood_msoftdrop_tau21": HistConf(
+            [ Axis(coll="FatJetGood", field="msoftdrop", label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10))),
+              Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1]) ]
+        ),
+        "FatJetGood_msoftdrop_pt": HistConf(
+            [ Axis(coll="FatJetGood", field="msoftdrop", label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10))),
+              Axis(coll="FatJetGood", field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10))) ]
         ),
     },
 
