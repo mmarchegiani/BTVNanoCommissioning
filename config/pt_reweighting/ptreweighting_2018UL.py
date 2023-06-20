@@ -26,7 +26,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : ptReweightProcessor,
-    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_tau21_reweighting_2018_twojets_pt350_leadsublead",
+    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_tau21_reweighting_2018_withJES",
     "workflow_options" : {},
 
     "run_options" : {
@@ -79,9 +79,14 @@ cfg =  {
                 "bycategory" : {
                 }
             },
-        "bysample": {
-        }    
+            "bysample": {
+            }
         },
+        "shape": {
+            "common":{
+                "inclusive": [ "JES_Total", "JER" ]
+            }
+        }
         
     },
 

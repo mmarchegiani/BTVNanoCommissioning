@@ -26,7 +26,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : ptReweightProcessor,
-    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_tau21_reweighting_2016_PostVFP_QCD_HT",
+    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_tau21_reweighting_2016_PostVFP_QCD_HT_withJES",
     "workflow_options" : {},
 
     "run_options" : {
@@ -79,9 +79,14 @@ cfg =  {
                 "bycategory" : {
                 }
             },
-        "bysample": {
-        }    
+            "bysample": {
+            }
         },
+        "shape": {
+            "common":{
+                "inclusive": [ "JES_Total", "JER" ]
+            }
+        }
         
     },
 
