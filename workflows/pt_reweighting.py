@@ -71,7 +71,7 @@ def overwrite_check(outfile):
     version = 1
     while os.path.exists(path):
         tag = str(version).rjust(2, '0')
-        path = outfile.replace('.coffea', f'_v{tag}.coffea')
+        path = outfile.replace('.json', f'_v{tag}.json')
         version += 1
     if path != outfile:
         print(f"The output will be saved to {path}")
@@ -95,6 +95,13 @@ class ptReweightProcessor(fatjetBaseProcessor):
         for histname in self.pt_eta_2d_maps + self.pt_eta_tau21_3d_maps:
             if not histname in self.cfg.variables.keys():
                 raise Exception(f"'{histname}' is not present in the histogram keys.")
+
+        #self.weights_config_allsamples
+        expected_shape_variations = {'JES_Total', 'JER'}
+        for sample, variations in self.cfg.available_shape_variations.items():
+            if not (set(variations) == expected_shape_variations):
+                missing_shape_variations = {var for var in expected_shape_variations if not var in variations}
+                raise Exception(f"Incorrect configuration of the shape variations. Missing: {missing_shape_variations}")
 
     def apply_object_preselection(self, variation):
         super().apply_object_preselection(variation)
@@ -178,39 +185,43 @@ class ptReweightProcessor(fatjetBaseProcessor):
         ratio_dict = defaultdict(float)
 
         for cat in categories:
-            slicing_mc_nominal = {'year': year, 'cat': cat, 'variation': 'nominal'}
-            dict_qcd_nominal = {d: h[d][slicing_mc_nominal] for d in samples_qcd}
-            dict_vjets_top_nominal = {d: h[d][slicing_mc_nominal] for d in samples_vjets_top}
-            stack_qcd_nominal = hist.Stack.from_dict(dict_qcd_nominal)
-            stack_vjets_top_nominal = hist.Stack.from_dict(dict_vjets_top_nominal)
-
-            if 'era' in h[samples_data[0]].axes.name:
-                slicing_data = {'year': year, 'cat': cat, 'era': sum}
-            else:
-                slicing_data = {'year': year, 'cat': cat}
-            dict_data = {d: h[d][slicing_data] for d in samples_data}
-            stack_data = hist.Stack.from_dict(dict_data)
-            if len(stack_data) > 1:
-                raise NotImplementedError
-            ratio, unc, unc_no_diff = get_data_mc_ratio(stack_data, stack_qcd_nominal, stack_vjets_top_nominal)
-            mod_ratio  = np.nan_to_num(ratio)
-            mod_unc = np.nan_to_num(unc)
-            mod_unc_no_diff = np.nan_to_num(unc_no_diff)
-            #if histname in self.pt_eta_2d_maps:
-            #    mod_ratio[mod_ratio == 0.0] = 1
-
             ratio_dict[cat] = {}
-            ratio_dict[cat].update({ "nominal" : mod_ratio })
-            ratio_dict[cat].update({ "statUp" : mod_ratio + mod_unc })
-            ratio_dict[cat].update({ "statDown" : mod_ratio - mod_unc })
+            for var_shape in ["nominal", "JES_TotalUp", "JES_TotalDown", "JERUp", "JERDown"]:
+                slicing_mc = {'year': year, 'cat': cat, 'variation': var_shape}
+                dict_qcd = {d: h[d][slicing_mc] for d in samples_qcd}
+                dict_vjets_top = {d: h[d][slicing_mc] for d in samples_vjets_top}
+                stack_qcd = hist.Stack.from_dict(dict_qcd)
+                stack_vjets_top = hist.Stack.from_dict(dict_vjets_top)
+
+                if 'era' in h[samples_data[0]].axes.name:
+                    slicing_data = {'year': year, 'cat': cat, 'era': sum}
+                else:
+                    slicing_data = {'year': year, 'cat': cat}
+                dict_data = {d: h[d][slicing_data] for d in samples_data}
+                stack_data = hist.Stack.from_dict(dict_data)
+                if len(stack_data) > 1:
+                    raise NotImplementedError
+                ratio, unc, unc_no_diff = get_data_mc_ratio(stack_data, stack_qcd, stack_vjets_top)
+                mod_ratio  = np.nan_to_num(ratio)
+                mod_unc = np.nan_to_num(unc)
+                mod_unc_no_diff = np.nan_to_num(unc_no_diff)
+                #if histname in self.pt_eta_2d_maps:
+                #    mod_ratio[mod_ratio == 0.0] = 1
+
+                ratio_dict[cat][var_shape] = {}
+                ratio_dict[cat][var_shape].update({ "nominal" : mod_ratio })
+                ratio_dict[cat][var_shape].update({ "statUp" : mod_ratio + mod_unc })
+                ratio_dict[cat][var_shape].update({ "statDown" : mod_ratio - mod_unc })
 
         categories = list(ratio_dict.keys())
-        variations = list(ratio_dict[categories[0]].keys())
+        shape_variations = list(ratio_dict[categories[0]].keys())
+        variations = list(ratio_dict[categories[0]][shape_variations[0]].keys())
         axis_category = hist.axis.StrCategory(categories, name="cat")
+        axis_shape_variation = hist.axis.StrCategory(shape_variations, name="shape_variation")
         axis_variation = hist.axis.StrCategory(variations, name="variation")
         # Stack nominal, statUp, statDown maps for each category
-        stack_map = np.stack([list(ratio_dict[cat].values()) for cat in categories])
-        sfhist = hist.Hist(axis_category, axis_variation, *axes, data=stack_map)
+        stack_map = np.stack([[list(ratio_dict[cat][var_shape].values()) for var_shape in shape_variations] for cat in categories])
+        sfhist = hist.Hist(axis_category, axis_shape_variation, axis_variation, *axes, data=stack_map)
         sfhist.label = "out"
         sfhist.name = f"{histname}_corr_{year}"
         description = "Reweighting SF matching the leading fatjet pT and eta MC distribution to data."
@@ -246,7 +257,11 @@ class ptReweightProcessor(fatjetBaseProcessor):
             tau21 = np.array([0.1, 0.35, 0.65, 0.8, 0.9], dtype=float)
             print("tau21 =", tau21)
             args = (pos, pt, eta, tau21)
-        print(pt_corr.evaluate('inclusive', 'nominal', *args))
+        for var_shape in shape_variations:
+            categorical_args = ['inclusive', var_shape, 'nominal']
+            print(categorical_args)
+            print(pt_corr.evaluate(*categorical_args, *args))
+            print()
 
     def postprocess(self, accumulator):
         '''
