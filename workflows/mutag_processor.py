@@ -43,11 +43,11 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
         # Leading: pos=0, Subleading: pos=1
         self.events["FatJetGood"] = ak.with_field(self.events["FatJetGood"], ak.local_index(self.events["FatJetGood"], axis=1), "pos")
 
-    def ptetatau21_reweighting(self):
+    def ptetatau21_reweighting(self, variation):
         '''Correction of jets observable by a 3D reweighting based on (pT, eta, tau21).
         The function stores the nominal, up and down weights in self.weight_3d,
         where the up/down variations are computed considering the statistical uncertainty on data and MC.'''
-        cset = correctionlib.CorrectionSet.from_file(ptetatau21_reweighting[self._year])
+        cset = correctionlib.CorrectionSet.from_file(ptetatau21_reweighting[self._sample][self._year])
         key = list(cset.keys())[0]
         corr = cset[key]
 
@@ -60,7 +60,7 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
 
         weight_dict = {"all" : {}, "1" : {}, "2" : {}}
         for var in ["nominal", "statUp", "statDown"]:
-            w = corr.evaluate(cat, var, pos, pt, eta, tau21)
+            w = corr.evaluate(cat, variation, var, pos, pt, eta, tau21)
             weight_dict["all"][var] = ak.unflatten(w, nfatjet)
             # Here we build the flattened custom weights for the leading and subleading jet collections.
             # In order for the length of the weights array to match the number of the per-event mask,
@@ -81,8 +81,8 @@ class mutagAnalysisProcessor(fatjetBaseProcessor):
             }
 
     def process_extra_after_presel(self, variation):
-        if self._sample == "QCD_MuEnriched":
-            self.ptetatau21_reweighting()
+        if self._sample in ["QCD_MuEnriched", "QCD_HT"]:
+            self.ptetatau21_reweighting(variation)
             for pos, hists in self.histograms_to_reweigh["by_pos"].items():
                 for histname in hists:
                     self.custom_histogram_weights[histname] = self.weight_3d[pos]
