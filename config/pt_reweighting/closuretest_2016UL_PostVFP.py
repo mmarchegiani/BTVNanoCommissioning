@@ -62,10 +62,10 @@ cfg =  {
     "run_options" : {
         "executor"       : "dask/slurm",
         "workers"        : 1,
-        "scaleout"       : 200,
+        "scaleout"       : 125,
         "queue"          : "standard",
         "walltime"       : "8:00:00",
-        "mem_per_worker" : "6GB", # GB
+        "mem_per_worker" : "8GB", # GB
         "exclusive"      : False,
         "chunk"          : 400000,
         "retries"        : 50,

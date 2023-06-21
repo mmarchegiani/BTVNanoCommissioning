@@ -48,7 +48,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : mutagAnalysisProcessor,
-    "output"   : "output/test/closure_test/closuretest_2018_withJES",
+    "output"   : "output/pocket_coffea/closure_test/closuretest_2018_withJES",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -62,10 +62,10 @@ cfg =  {
     "run_options" : {
         "executor"       : "dask/slurm",
         "workers"        : 1,
-        "scaleout"       : 50,
-        "queue"          : "short",
-        "walltime"       : "00:30:00",
-        "mem_per_worker" : "4GB", # GB
+        "scaleout"       : 125,
+        "queue"          : "standard",
+        "walltime"       : "8:00:00",
+        "mem_per_worker" : "8GB", # GB
         "exclusive"      : False,
         "chunk"          : 400000,
         "retries"        : 50,
