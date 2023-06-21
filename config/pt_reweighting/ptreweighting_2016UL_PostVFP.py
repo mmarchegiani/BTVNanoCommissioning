@@ -14,7 +14,7 @@ samples = ["QCD_MuEnriched",
 cfg =  {
     "dataset" : {
         "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
-                  "datasets/MC_VJets_RunIISummer20UL.json",
+                  "datasets/MC_VJets_RunIISummer20UL_redirector.json",
                   "datasets/MC_top_RunIISummer20UL_local.json",
                   "datasets/DATA_BTagMu_RunIISummer20UL_local.json"],
         "filter" : {
