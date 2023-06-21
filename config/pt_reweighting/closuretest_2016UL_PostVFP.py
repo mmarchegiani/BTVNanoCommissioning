@@ -6,6 +6,7 @@ from config.fatjet_base.custom.cuts import mutag_fatjet_sel, mutag_subjet_sel, g
 from config.fatjet_base.custom.functions import get_HLTsel
 
 samples = ["QCD_MuEnriched",
+           "QCD_HT",
            "VJets",
            "SingleTop_ttbar",
            "GluGluHToBB",
@@ -31,7 +32,8 @@ for s in filter(lambda x: 'DATA' not in x, samples):
 cfg =  {
     "dataset" : {
         "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
-                  "datasets/MC_VJets_RunIISummer20UL.json",
+                  "datasets/MC_QCD_HT_RunIISummer20UL.json",
+                  "datasets/MC_VJets_RunIISummer20UL_redirector.json",
                   "datasets/MC_top_RunIISummer20UL_local.json",
                   "datasets/MC_GluGluH_RunIISummer20UL_local.json",
                   "datasets/DATA_BTagMu_RunIISummer20UL_local.json"
@@ -46,7 +48,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : mutagAnalysisProcessor,
-    "output"   : "output/pocket_coffea/closure_test/closuretest_2016_PostVFP_bintau05",
+    "output"   : "output/pocket_coffea/closure_test/closuretest_2016_PostVFP_withJES",
     "workflow_options" : {
         "histograms_to_reweigh" : {
             "by_pos" : {
@@ -65,7 +67,7 @@ cfg =  {
         "walltime"       : "8:00:00",
         "mem_per_worker" : "6GB", # GB
         "exclusive"      : False,
-        "chunk"          : 100000,
+        "chunk"          : 400000,
         "retries"        : 50,
         "treereduction"  : 10,
         "max"            : None,
@@ -108,10 +110,14 @@ cfg =  {
                 "bycategory" : {
                 }
             },
-        "bysample": {
-        }    
+            "bysample": {
+            }
         },
-        
+        "shape": {
+            "common":{
+                "inclusive": [ "JES_Total", "JER" ]
+            }
+        }
     },
 
    "variables":
