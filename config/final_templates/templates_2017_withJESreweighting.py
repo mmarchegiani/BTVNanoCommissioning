@@ -117,9 +117,15 @@ cfg =  {
             }
         },
         "bysample": {
-            "QCD_HT" : ["psWeight_isr", "psWeight_fsr"],
-            "VJets" : ["psWeight_isr", "psWeight_fsr"],
-            "SingleTop_ttbar" : ["psWeight_isr", "psWeight_fsr"],
+            "QCD_HT" : {
+                "inclusive" : ["psWeight_isr", "psWeight_fsr"]
+            },
+            "VJets" : {
+                "inclusive" : ["psWeight_isr", "psWeight_fsr"]
+            },
+            "SingleTop_ttbar" : {
+                "inclusive" : ["psWeight_isr", "psWeight_fsr"]
+            },
         }
     },
 
@@ -133,9 +139,15 @@ cfg =  {
                 }
             },
             "bysample": {
-                "QCD_HT" : ["psWeight_isr", "psWeight_fsr"],
-                "VJets" : ["psWeight_isr", "psWeight_fsr"],
-                "SingleTop_ttbar" : ["psWeight_isr", "psWeight_fsr"],
+                "QCD_HT" : {
+                    "inclusive" : ["psWeight_isr", "psWeight_fsr"]
+                },
+                "VJets" : {
+                    "inclusive" : ["psWeight_isr", "psWeight_fsr"]
+                },
+                "SingleTop_ttbar" : {
+                    "inclusive" : ["psWeight_isr", "psWeight_fsr"]
+                },
             }
         },
         "shape": {
