@@ -38,7 +38,7 @@ multicuts = [
              cuts_names=cuts_names_pt),
 ]
 
-samples = ["QCD_MuEnriched",
+samples = [#"QCD_MuEnriched",
            "QCD_HT",
            "VJets",
            "SingleTop_ttbar",
@@ -51,7 +51,7 @@ for s in filter(lambda x: 'DATA' not in x, samples):
 
 cfg =  {
     "dataset" : {
-        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
+        "jsons": [#"datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
                   "datasets/MC_QCD_HT_RunIISummer20UL.json",
                   "datasets/MC_VJets_RunIISummer20UL.json",
                   "datasets/MC_top_RunIISummer20UL_local.json",
@@ -84,7 +84,7 @@ cfg =  {
         "scaleout"       : 200,
         "queue"          : "standard",
         "walltime"       : "12:00:00",
-        "mem_per_worker" : "12GB", # GB
+        "mem_per_worker" : "8GB", # GB
         "exclusive"      : False,
         "chunk"          : 400000,
         "retries"        : 50,
@@ -159,32 +159,12 @@ cfg =  {
 
    "variables":
     {
-        **fatjet_hists(coll="FatJetGood"),
-        "FatJetGood_pt" : HistConf([Axis(name=f"FatJetGood_pt", coll="FatJetGood", field="pt",
-                                         label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10)))]),
-        "FatJetGood_msoftdrop" : HistConf([Axis(name=f"FatJetGood_msoftdrop", coll="FatJetGood", field="msoftdrop",
-                                         label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10)))]),
         "FatJetGood_logsumcorrSVmass": HistConf(
             [ Axis(coll="FatJetGood", field="logsumcorrSVmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=42, start=-2.4, stop=6) ]
-        ),
-        "nSVMatchedToFatJetGood": HistConf(
-            [ Axis(coll="FatJetGood", field="nSVMatchedToFatJetGood", label="Number of SV inside AK8 jet", bins=10, start=0, stop=10) ]
         ),
         "FatJetGood_logsumcorrSVmass_tau21": HistConf(
             [ Axis(coll="FatJetGood", field="logsumcorrSVmass", label=r"log($\sum({m^{corr}_{SV}})$)", bins=42, start=-2.4, stop=6),
               Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 1]) ]
-        ),
-        "FatJetGood_pt_tau21": HistConf(
-            [ Axis(coll="FatJetGood", field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10))),
-              Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 1]) ]
-        ),
-        "FatJetGood_msoftdrop_tau21": HistConf(
-            [ Axis(coll="FatJetGood", field="msoftdrop", label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10))),
-              Axis(coll="FatJetGood", field="tau21", label=r"$\tau_{21}$", type="variable", bins=[0, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 1]) ]
-        ),
-        "FatJetGood_msoftdrop_pt": HistConf(
-            [ Axis(coll="FatJetGood", field="msoftdrop", label=r"FatJet $m_{SD}$ [GeV]", bins=list(range(int(msd), 410, 10))),
-              Axis(coll="FatJetGood", field="pt", label=r"FatJet $p_{T}$ [GeV]", bins=list(range(int(pt_min), 1010, 10))) ]
         ),
     },
 
