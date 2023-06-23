@@ -34,23 +34,29 @@ if args.output == None:
     if args.output == '':
         args.output = os.getcwd()
 
-flavors = {'l', 'c', 'b', 'cc', 'bb'}
 output_templates = {}
+flavors = {'l', 'c', 'b', 'cc', 'bb'}
+samples_mc = ('QCD_MuEnriched', 'VJets', 'SingleTop_ttbar')
+samples_madgraph = ('QCD_HT')
 fit_variables = [ 'FatJetGood_logsumcorrSVmass' ]
 sf_label = 'sf_ptetatau21_reweighting'
 
 for histname in fit_variables:
     h = accumulator['variables'][histname]
-    h_5f = { f : sum({k : val for k, val in h.items() if k.endswith(f"_{f}")}.values()) for f in flavors }
+    h_5f = { f : sum({k : val for k, val in h.items() if k.startswith(samples_mc) and k.endswith(f"_{f}")}.values()) for f in flavors }
+    h_5f_madgraph = { f : sum({k : val for k, val in h.items() if k.startswith(samples_madgraph) and k.endswith(f"_{f}")}.values()) for f in flavors }
     #h_5f.update({'DATA' : h['DATA']})
     h_3f = {'l' : h_5f['l'], 'b+bb' : h_5f['b'] + h_5f['bb'], 'c+cc' : h_5f['c'] + h_5f['cc']}
     #h_3f = {'l' : h_5f['l'], 'b+bb' : h_5f['b'] + h_5f['bb'], 'c+cc' : h_5f['c'] + h_5f['cc'], 'DATA' : h_5f['DATA']}
-    for scheme, h in zip(['3f', '5f'], [h_3f, h_5f]):
+    h_3f_madgraph = {'l' : h_5f_madgraph['l'], 'b+bb' : h_5f_madgraph['b'] + h_5f_madgraph['bb'], 'c+cc' : h_5f_madgraph['c'] + h_5f_madgraph['cc']}
+    #h_3f_madgraph = {'l' : h_5f_madgraph['l'], 'b+bb' : h_5f_madgraph['b'] + h_5f_madgraph['bb'], 'c+cc' : h_5f_madgraph['c'] + h_5f_madgraph['cc'], 'DATA' : h_5f_madgraph['DATA']}
+    for scheme, h, h_madgraph in zip(['3f', '5f'], [h_3f, h_5f], [h_3f_madgraph, h_5f_madgraph]):
         print(f"Histogram: {histname}\tScheme: {scheme}")
         output_templates[scheme] = {}
         samples = h.keys()
         samples_data = list(filter(lambda d : 'DATA' in d, samples))
         flavors   = list(filter(lambda d : 'DATA' not in d, samples))
+        breakpoint()
 
         h_mc = h[flavors[0]]
 
@@ -59,6 +65,7 @@ for histname in fit_variables:
         categories = get_axis_items(h_mc, 'cat')
         variations = get_axis_items(h_mc, 'variation')
         variations_reweighting = [var for var in variations if sf_label in var]
+        variations_psweight = ['psWeight_isr', 'psWeight_fsr']
 
         for year in years:
             for cat in categories:
@@ -81,8 +88,7 @@ for histname in fit_variables:
                     # Compute the variance associated with the 3D reweighting as the maximum bin by bin between the up and down variances
                     variance_reweighting = np.max((variance_up, variance_down), axis=0)
                     # Save the nominal shape with the corrected variance now accounting for the 3D reweighting uncertainty
-                    output_templates[scheme][f"{histname}_{year}_{cat}_QCD_{f}_nominal"] = [sumw_nominal, sumw2_nominal]
-                    #output_templates[scheme][f"{histname}_{year}_{cat}_QCD_{f}_nominal"] = [sumw_nominal, sumw2_nominal + variance_reweighting]
+                    output_templates[scheme][f"{histname}_{year}_{cat}_QCD_MuEnriched_{f}_nominal"] = [sumw_nominal, sumw2_nominal + variance_reweighting]
                 # Save the remaining varied shapes in the output dictionary
                 for var in variations:
                     if (var == "nominal") | (var in variations_reweighting):
@@ -90,7 +96,23 @@ for histname in fit_variables:
                     for f in flavors:
                         slicing.update({'variation' : var})
                         sumw, sumw2 = h[f][slicing].values(), h[f][slicing].variances()
-                        output_templates[scheme][f"{histname}_{year}_{cat}_QCD_{f}_{var}"] = [sumw, sumw2]
+                        output_templates[scheme][f"{histname}_{year}_{cat}_QCD_MuEnriched_{f}_{var}"] = [sumw, sumw2]
+                # Save the ISR/FSR varied shapes taken from the Madgraph samples and the QCD flavor composition variation
+                ratios = {}
+                for var in variations_psweight:
+                    for f in flavors:
+                        # Store the nominal shape and its variance for both the PYTHIA and Magraph samples
+                        sumw_nominal, sumw2_nominal = h[f][slicing_nominal].values(), h[f][slicing_nominal].variances()
+                        sumw_nominal_madgraph, sumw2_nominal_madgraph = h_madgraph[f][slicing_nominal].values(), h_madgraph[f][slicing_nominal].variances()
+                        slicing.update({'variation' : var})
+                        sumw, sumw2 = h_madgraph[f][slicing].values(), h_madgraph[f][slicing].variances()
+                        ratio_madgraph = sumw / sumw_nominal_madgraph
+                        output_templates[scheme][f"{histname}_{year}_{cat}_QCD_MuEnriched_{f}_{var}"] = [ratio_madgraph * sumw_nominal, ratio_madgraph**2 * sumw2_nominal]
+                        # Here we save the QCD flavor composition variation: the Up variation is defined as the sumw of the nominal Madgraph shape, while
+                        # the Down variation is defined as the inverse of the sumw of the nominal Magraph shape.
+                        # In this way, a 20% up variation will correspond to a 16.7% down variation since 1/1.2 = 0.833
+                        output_templates[scheme][f"{histname}_{year}_{cat}_QCD_MuEnriched_{f}_QCDFlvComposUp"] = [sumw_nominal_madgraph, sumw2_nominal_madgraph]
+                        output_templates[scheme][f"{histname}_{year}_{cat}_QCD_MuEnriched_{f}_QCDFlvComposDown"] = [1. / sumw_nominal_madgraph, sumw2_nominal_madgraph / sumw_nominal_madgraph**4]
 
 #### Saving into pickle
 if not os.path.exists(args.output):
