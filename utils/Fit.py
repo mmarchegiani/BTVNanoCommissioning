@@ -12,6 +12,12 @@ from parameters_fit import fit_parameters
 from parameters import AK8Taggers, AK8Taggers_bb, AK8Taggers_cc
 
 regions = ['pass', 'fail']
+unc_lumi = {
+    '2016_PreVFP'  : 1.012,
+    '2016_PostVFP' : 1.012,
+    '2017'         : 1.023,
+    '2018'         : 1.025
+}
 
 epsilon = 1e-3
 
@@ -25,6 +31,12 @@ def merge_bins(values, rebin_size):
 
     return np.array(values_rebinned)
 
+def iserror(func, *args, **kw):
+    try:
+        func(*args, **kw)
+        return False
+    except Exception:
+        return True
 
 class Fit():
     def __init__(self, input, output, categories, var, year, xlim, binwidth, scheme='3f'):
@@ -59,25 +71,9 @@ class Fit():
         self.define_frozen_parameters()
         self.build_fit_models()
         self.build_combine_script()
+        self.build_job_submission_script()
         #self.run_fits()
         #self.save_results()
-
-    def rebin(self, h_vals, h_sumw2, bins):
-        bins_original = np.linspace(-6, 6, 121)
-        binwidth_original = bins_original[1] - bins_original[0]
-        rebin_size = int(self.binwidth / binwidth_original)
-        h_vals_rebinned  = merge_bins(h_vals, rebin_size)
-        h_sumw2_rebinned = merge_bins(h_sumw2, rebin_size)
-
-        bin_centers = (bins + 0.5*self.binwidth)[:-1]
-        mask = (bin_centers >= self.lo) & (bin_centers <= self.hi)
-        idx = np.argwhere(mask)[0][0]
-        mask_bins = np.concatenate((mask[:idx],[True],mask[idx:]))      # Add an extra True value for `bins` array
-        h_vals = h_vals_rebinned[mask]
-        h_sumw2 = h_sumw2_rebinned[mask]
-        bins = bins[mask_bins]
-
-        return h_vals, h_sumw2, bins
 
     def define_flavors(self):
         if self.scheme == '3f':
@@ -91,7 +87,7 @@ class Fit():
         # Here we assume a 1D histogram therefore we take the first axis
         #num, start, stop = ( self.cfg['variables'][self.var]['axes'][0][key] for key in ['bins', 'start', 'stop'] )
         nbins = 12/self.binwidth
-        self.bins = np.linspace(-6, 6, nbins+1)
+        self.bins = np.arange(self.lo, self.hi + self.binwidth, self.binwidth)
         #if (self.lo not in self.bins) | (self.hi not in self.bins):
         #    raise Exception("The low and high bounds of the interval have to be present in the new bin edges.")
 
@@ -134,6 +130,9 @@ class Fit():
             self.nuisance_shapes[model_name]["pileup"] = rl.NuisanceParameter("pileup", "shape")
             self.nuisance_shapes[model_name]["JES_Total"] = rl.NuisanceParameter("JES_Total", "shape")
             self.nuisance_shapes[model_name]["JER"] = rl.NuisanceParameter("JER", "shape")
+            self.nuisance_shapes[model_name]["psWeight_isr"] = rl.NuisanceParameter("psWeight_isr", "shape")
+            self.nuisance_shapes[model_name]["psWeight_fsr"] = rl.NuisanceParameter("psWeight_fsr", "shape")
+            self.nuisance_shapes[model_name]["QCDFlvCompos"] = rl.NuisanceParameter("QCDFlvCompos", "shape")
             self.nuisance_shapes[model_name]["frac_bb"] = rl.NuisanceParameter("frac_bb", "shape")
             self.nuisance_shapes[model_name]["frac_cc"] = rl.NuisanceParameter("frac_cc", "shape")
             self.nuisance_shapes[model_name]["frac_l"] = rl.NuisanceParameter("frac_l", "shape")
@@ -147,7 +146,7 @@ class Fit():
             self.nuisance_lnN[model_name] = {}
             self.nuisance_lnN_effect[model_name] = {}
             self.nuisance_lnN[model_name]["lumi"] = rl.NuisanceParameter("lumi", "lnN")
-            self.nuisance_lnN_effect[model_name]["lumi"] = 1.023
+            self.nuisance_lnN_effect[model_name]["lumi"] = unc_lumi[self.year]
 
     def define_frozen_parameters(self):
         self.freeze = {}
@@ -167,16 +166,14 @@ class Fit():
         else:
             raise Exception("There is no known tagger to calibrate in the given category")
 
-    def get_templ(self, histname, lo, hi, sumw2=True):
+    def get_templ(self, histname, sumw2=True):
         h_vals = self.templates[histname][0]
-        h_sumw2 = self.templates[histname][1]
         bins = self.observable.binning
-        
-        h_vals, h_sumw2, bins = self.rebin(h_vals, h_sumw2, bins)
 
         if not sumw2:
             return (h_vals, bins, self.observable.name)
         else:
+            h_sumw2 = self.templates[histname][1]
             return (h_vals, bins, self.observable.name, h_sumw2)
 
     def build_fit_models(self):
@@ -189,16 +186,16 @@ class Fit():
                 self.define_signal_name(model_name)
                 channel = rl.Channel("sf{}".format(region))
                 for flavor in self.flavors:
-                    histname = "{}_{}_{}_QCD_{}_{}".format(self.var, self.year, cat, flavor, "nominal")
-                    template = self.get_templ(histname, self.lo, self.hi)
+                    histname = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, "nominal")
+                    template = self.get_templ(histname)
 
                     is_signal = True if flavor == self.signal_name[model_name] else False
                     sType = rl.Sample.SIGNAL if is_signal else rl.Sample.BACKGROUND
                     sample = rl.TemplateSample("{}_{}".format(channel.name, flavor), sType, template)
-                    sample.autoMCStats(epsilon=epsilon)
+                    sample.autoMCStats(uncertainty_type='poisson')
                     channel.addSample(sample)
 
-                template_obs = self.get_templ("{}_{}_{}_DATA".format(self.var, self.year, cat), self.lo, self.hi, sumw2=False)
+                template_obs = self.get_templ("{}_{}_{}_DATA".format(self.var, self.year, cat), sumw2=False)
                 channel.setObservation(template_obs)
 
                 self.models[model_name].addChannel(channel)
@@ -233,13 +230,12 @@ class Fit():
                     else:
                         for flavor in self.flavors:
                             sample = self.models[model_name]["sf{}".format(region)][flavor]
-                            histname_nominal = "{}_{}_{}_QCD_{}_{}".format(self.var, self.year, cat, flavor, "nominal")
-                            histname_up   = "{}_{}_{}_QCD_{}_{}".format(self.var, self.year, cat, flavor, nuisance.name+"Up")
-                            histname_down = "{}_{}_{}_QCD_{}_{}".format(self.var, self.year, cat, flavor, nuisance.name+"Down")
-                            h_nominal, _bins, _obs_name = self.get_templ(histname_nominal, self.lo, self.hi, sumw2=False)
-                            h_up, _bins, _obs_name = self.get_templ(histname_up, self.lo, self.hi, sumw2=False)
-                            h_down, _bins, _obs_name = self.get_templ(histname_down, self.lo, self.hi, sumw2=False)
-                            bin_centers = _bins[:-1] + 0.5*self.binwidth
+                            histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, "nominal")
+                            histname_up   = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, nuisance.name+"Up")
+                            histname_down = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, nuisance.name+"Down")
+                            h_nominal, _bins, _obs_name = self.get_templ(histname_nominal, sumw2=False)
+                            h_up, _bins, _obs_name = self.get_templ(histname_up, sumw2=False)
+                            h_down, _bins, _obs_name = self.get_templ(histname_down, sumw2=False)
                             r_up = h_up / h_nominal
                             r_down = h_down / h_nominal
                             effect_up = np.where(~(np.isnan(r_up) | np.isinf(r_up)), r_up, 1)
@@ -250,12 +246,13 @@ class Fit():
                     for flavor in self.flavors:
                         sample = self.models[model_name]["sf{}".format(region)][flavor]
                         sample.setParamEffect(nuisance, self.nuisance_lnN_effect[model_name][nuisance_name])
-                # Save the combine fit models to output folder
-                fitdir = os.path.abspath(os.path.join(self.output, 'fitdir', model_name))
-                if not os.path.exists(fitdir):
-                    os.makedirs(fitdir)
-                self.models[model_name].renderCombine(fitdir)
-                self.fitdirs[model_name] = fitdir
+        # Save the combine fit models to output folder
+        for model_name, model in self.models.items():
+            fitdir = os.path.abspath(os.path.join(self.output, 'fitdir', model_name))
+            if not os.path.exists(fitdir):
+                os.makedirs(fitdir)
+            model.renderCombine(fitdir)
+            self.fitdirs[model_name] = fitdir
 
     def build_combine_script(self):
         for model_name, model in self.models.items():
@@ -263,8 +260,13 @@ class Fit():
             script_MultiDimFit = os.path.join(self.fitdirs[model_name], 'build_MultiDimFit.sh')
             os.system("cp {} {}".format(script_FitDiagnostics, script_MultiDimFit))
             with open(script_FitDiagnostics, 'a') as file:
-                combineCommand = '\ncombine -M FitDiagnostics --expectSignal 1 -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 2 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1'.format(model_name, self.signal_name[model_name].replace('+', '_'))
-                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit --expectSignal 1 -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 2 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1'.format(model_name, self.signal_name[model_name].replace('+', '_'))
+                extra_args = ""
+                #extra_args = "--robustHesse=1 "
+                extra_args += "--stepSize=0.001 --X-rtd=MINIMIZER_analytic --X-rtd MINIMIZER_MaxCalls=9999999 --cminFallbackAlgo Minuit2,Migrad,0:0.2 --X-rtd FITTER_NEW_CROSSING_ALGO --X-rtd FITTER_NEVER_GIVE_UP --X-rtd FITTER_BOUND"
+                #POIs = self.signal_name[model_name].replace('+', '_')
+                POIs = 'c_cc,b_bb,l'
+                combineCommand = '\ncombine -M FitDiagnostics -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
+                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 setParameters = 'r=1'
                 freezeParameters = 'r'
                 for par in self.freeze[model_name]:
@@ -278,11 +280,27 @@ class Fit():
             with open(script_MultiDimFit, 'a') as file:
                 file.write(combineCommand_MultiDimFit)
 
-    def run_fits(self, mode):
+    def build_job_submission_script(self):
+        for model_name, model in self.models.items():
+            script_job = os.path.join(self.fitdirs[model_name], 'job.sub')
+            firstlines = ['#!/bin/bash\n', '#\n', '#SBATCH -p short\n', '#SBATCH --account=t3\n',
+                          '#SBATCH --job-name=fit_mutag\n', '#SBATCH --mem=3000M\n', '#SBATCH --time 01:00:00\n', '#SBATCH -o %x-%j.out\n', '#SBATCH -e %x-%j.err\n', '\n',
+                          'echo HOME: $HOME\n', 'echo USER: $USER\n', 'echo SLURM_JOB_ID: $SLURM_JOB_ID\n', 'echo HOSTNAME: $HOSTNAME\n', '\n',
+                          'mkdir -p /scratch/$USER/${SLURM_JOB_ID}\n', 'export TMPDIR=/scratch/$USER/${SLURM_JOB_ID}\n', '\n']
+            lastlines = ['rm  -rf /scratch/$USER/${SLURM_JOB_ID}\n', '\n', 'date\n']
+            with open(script_job, 'a') as file:
+                file.writelines(firstlines)
+                file.writelines(["cd /work/mmarcheg/CMSSW_10_2_13\n", "cmsenv\n", "cd {}\n".format(self.fitdirs[model_name]), "bash build.sh\n"])
+                file.writelines(lastlines)
+    def run_fits(self, mode, job=True):
         if mode == "FitDiagnostics":
             command = 'bash build.sh'
+            if job == True:
+                command = 'sbatch job.sub'
         elif mode == "MultiDimFit":
             command = 'bash build_{}.sh'.format(mode)
+            if job == True:
+                raise NotImplementedError
 
         parent_dir = os.getcwd()
         if self.scheme == '3f':
@@ -297,10 +315,10 @@ class Fit():
             print("Running fit of model '{}'".format(model_name))
             print("parameters:", self.parameters[model_name])
             os.system(command)
-            if mode == "FitDiagnostics":
-                self.save_results(model_name, fitdir, mode)
-            elif mode == "MultiDimFit":
-                self.save_scans(model_name, fitdir)
+            #if mode == "FitDiagnostics":
+            #    self.save_results(model_name, fitdir, mode)
+            #elif mode == "MultiDimFit":
+            #    self.save_scans(model_name, fitdir)
         os.chdir(parent_dir)
 
     def save_scans(self, model_name, fitdir):
@@ -330,69 +348,74 @@ class Fit():
         #print(combineCommand)
         #print("Freezing all nuisances...".format(nuisance_name))
 
-    def save_results(self, model_name, fitdir, mode):
-        wp = model_name.split('wp')[0][-1]
-        wpt = model_name.split('Pt-')[1]
-        combineFile = uproot.open(os.path.join(fitdir, "higgsCombine_{}.{}.mH120.root".format(model_name, mode)))
+    def save_results(self, mode):
+        for model_name, model in self.models.items():
+            fitdir = self.fitdirs[model_name]
+            wp = model_name.split('wp')[0][-1]
+            wpt = model_name.split('Pt-')[1]
+            filename = os.path.join(fitdir, "higgsCombine_{}.{}.mH120.root".format(model_name, mode))
+            while iserror(uproot.open, filename):
+                pass
+            combineFile = uproot.open(filename)
 
-        combineTree = combineFile['limit']
-        combineBranches = combineTree.arrays()
-        results = combineBranches['limit']
+            combineTree = combineFile['limit']
+            combineBranches = combineTree.arrays()
+            results = combineBranches['limit']
 
-        if len(results) < 4:
-            print("FIT FAILED : ", model_name)
-            return
+            if len(results) < 4:
+                print("FIT FAILED : ", model_name)
+                return
 
-        combineCont, low, high, temp = results
-        combineErrUp = high - combineCont
-        combineErrDown = combineCont - low
-        d = {}
+            combineCont, low, high, temp = results
+            combineErrUp = high - combineCont
+            combineErrDown = combineCont - low
+            d = {}
 
-        POI = self.signal_name[model_name]
-        columns = ['year', 'selection', 'wp', 'pt',
-            POI, '{}ErrUp'.format(POI), '{}ErrDown'.format(POI),
-            'SF({})'.format(POI)]
-        columns_for_latex = ['year', 'pt', 'SF({})'.format(POI)]
-        d = {'year' : [self.year], 'selection' : [model_name], 'tagger' : [self.tagger],
-            'wp' : [wp], 'pt' : [wpt],
-            POI : [combineCont], '{}ErrUp'.format(POI) : [combineErrUp], '{}ErrDown'.format(POI) : [combineErrDown],
-            'SF({})'.format(POI) : ['{}$^{{+{}}}_{{-{}}}$'.format(combineCont, combineErrUp, combineErrDown)]}
+            POI = self.signal_name[model_name]
+            columns = ['year', 'selection', 'wp', 'pt',
+                POI, '{}ErrUp'.format(POI), '{}ErrDown'.format(POI),
+                'SF({})'.format(POI)]
+            columns_for_latex = ['year', 'pt', 'SF({})'.format(POI)]
+            d = {'year' : [self.year], 'selection' : [model_name], 'tagger' : [self.tagger],
+                'wp' : [wp], 'pt' : [wpt],
+                POI : [combineCont], '{}ErrUp'.format(POI) : [combineErrUp], '{}ErrDown'.format(POI) : [combineErrDown],
+                'SF({})'.format(POI) : ['{}$^{{+{}}}_{{-{}}}$'.format(combineCont, combineErrUp, combineErrDown)]}
 
-        value, lo, hi = (self.parameters[model_name][POI]['value'], self.parameters[model_name][POI]['lo'], self.parameters[model_name][POI]['hi'])
-        f = open(os.path.join(fitdir, "fitResults_{}Pt.txt".format(model_name)), 'w')
-        lineIntro = 'Best fit '
-        firstline = '{}{}: {}  -{}/+{}  (68%  CL)  range = [{}, {}]\n'.format(lineIntro, POI, combineCont, combineErrDown, combineErrUp, lo, hi)
-        f.write(firstline)
-        fitResults = ROOT.TFile.Open(os.path.join(fitdir, "fitDiagnostics_{}.root".format(model_name)))
-        fit_s = fitResults.Get('fit_s')
+            value, lo, hi = (self.parameters[model_name][POI]['value'], self.parameters[model_name][POI]['lo'], self.parameters[model_name][POI]['hi'])
+            f = open(os.path.join(fitdir, "fitResults_{}Pt.txt".format(model_name)), 'w')
+            lineIntro = 'Best fit '
+            firstline = '{}{}: {}  -{}/+{}  (68%  CL)  range = [{}, {}]\n'.format(lineIntro, POI, combineCont, combineErrDown, combineErrUp, lo, hi)
+            f.write(firstline)
+            fitResults = ROOT.TFile.Open(os.path.join(fitdir, "fitDiagnostics_{}.root".format(model_name)))
+            fit_s = fitResults.Get('fit_s')
 
-        for flavor in self.flavors:
-            if (flavor == POI): continue
-            par_result = fit_s.floatParsFinal().find(flavor.replace('+', '_'))
-            columns.append(flavor)
-            columns.append('{}Err'.format(flavor))
-            columns.append('SF({})'.format(flavor))
-            columns_for_latex.append('SF({})'.format(flavor))
-            if par_result == None:
-                d.update({flavor : -999, '{}Err'.format(flavor) : -999, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(-999, -999)})
-                continue
-            parVal = par_result.getVal()
-            parErr = par_result.getAsymErrorHi()
-            value, lo, hi = (self.parameters[model_name][flavor]['value'], self.parameters[model_name][flavor]['lo'], self.parameters[model_name][flavor]['hi'])
-            gapSpace = ''.join( (len(lineIntro) + len(POI) - len(flavor) )*[' '])
-            lineResult = '{}{}: {}  -+{}'.format(gapSpace, flavor, parVal, parErr)
-            gapSpace2 = ''.join( (firstline.find('(') - len(lineResult) )*[' '])
-            line = lineResult + gapSpace2 + '(68%  CL)  range = [{}, {}]\n'.format(lo, hi)
-            f.write(line)
-            #columns.append(flavor)
-            #columns.append('{}Err'.format(flavor))
-            #columns.append('SF({})'.format(flavor))
-            #columns_for_latex.append('SF({})'.format(flavor))
-            d.update({flavor : parVal, '{}Err'.format(flavor) : parErr, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(parVal, parErr)})
-        f.close()
-        df = pd.DataFrame(data=d)
-        if self.first[POI]:
-            df.to_csv(self.fitResults[POI], columns=columns, mode='w', header=True)
-            self.first[POI] = False
-        else:
-            df.to_csv(self.fitResults[POI], columns=columns, mode='a', header=False)
+            for flavor in self.flavors:
+                if (flavor == POI): continue
+                par_result = fit_s.floatParsFinal().find(flavor.replace('+', '_'))
+                columns.append(flavor)
+                columns.append('{}Err'.format(flavor))
+                columns.append('SF({})'.format(flavor))
+                columns_for_latex.append('SF({})'.format(flavor))
+                if par_result == None:
+                    d.update({flavor : -999, '{}Err'.format(flavor) : -999, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(-999, -999)})
+                    continue
+                parVal = par_result.getVal()
+                parErr = par_result.getAsymErrorHi()
+                value, lo, hi = (self.parameters[model_name][flavor]['value'], self.parameters[model_name][flavor]['lo'], self.parameters[model_name][flavor]['hi'])
+                gapSpace = ''.join( (len(lineIntro) + len(POI) - len(flavor) )*[' '])
+                lineResult = '{}{}: {}  -+{}'.format(gapSpace, flavor, parVal, parErr)
+                gapSpace2 = ''.join( (firstline.find('(') - len(lineResult) )*[' '])
+                line = lineResult + gapSpace2 + '(68%  CL)  range = [{}, {}]\n'.format(lo, hi)
+                f.write(line)
+                #columns.append(flavor)
+                #columns.append('{}Err'.format(flavor))
+                #columns.append('SF({})'.format(flavor))
+                #columns_for_latex.append('SF({})'.format(flavor))
+                d.update({flavor : parVal, '{}Err'.format(flavor) : parErr, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(parVal, parErr)})
+            f.close()
+            df = pd.DataFrame(data=d)
+            if self.first[POI]:
+                df.to_csv(self.fitResults[POI], columns=columns, mode='w', header=True)
+                self.first[POI] = False
+            else:
+                df.to_csv(self.fitResults[POI], columns=columns, mode='a', header=False)
