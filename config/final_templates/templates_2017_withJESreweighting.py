@@ -52,7 +52,7 @@ for s in filter(lambda x: 'DATA' not in x, samples):
 cfg =  {
     "dataset" : {
         "jsons": [#"datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
-                  "datasets/MC_QCD_HT700toInf_RunIISummer20UL.json",
+                  "datasets/MC_QCD_HT700toInf_RunIISummer20UL_redirector.json",
                   "datasets/MC_VJets_RunIISummer20UL.json",
                   "datasets/MC_top_RunIISummer20UL_local.json",
                   "datasets/DATA_BTagMu_RunIISummer20UL_local.json"
