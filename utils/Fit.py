@@ -51,6 +51,7 @@ class Fit():
         self.define_flavors()
         self.templates = np.load(os.path.abspath(self.input), allow_pickle=True)
         self.categories = categories
+        """
         if self.scheme == '3f':
             self.fitResults = {
                 'b+bb' : os.path.join(os.getcwd(), self.output, 'fitResults_bb.csv'),
@@ -61,6 +62,8 @@ class Fit():
                 'bb' : os.path.join(os.getcwd(), self.output, 'fitResults_bb.csv'),
                 'cc' : os.path.join(os.getcwd(), self.output, 'fitResults_cc.csv'),
             }
+        """
+        #self.fitResults = os.path.join(os.getcwd(), self.output)
         self.signal_name = {}
         self.define_bins()
         self.define_observable()
@@ -114,14 +117,15 @@ class Fit():
             if not model_name in self.parameters.keys():
                 self.parameters[model_name] = {}
                 for flavor in self.flavors:
-                    self.parameters[model_name][flavor] = {'value' : 1., 'lo' : 0., 'hi' : 2.}
+                    self.parameters[model_name][flavor] = {'value' : 1., 'lo' : 0.5, 'hi' : 2.}
 
     def define_independent_parameters(self):
         self.indep_pars = {}
         for model_name in self.models.keys():
             self.indep_pars[model_name] = {}
             for flavor in self.flavors:
-                self.indep_pars[model_name][flavor] = rl.IndependentParameter(flavor.replace('+', '_'), **self.parameters[model_name][flavor])
+                self.indep_pars[model_name][flavor] = rl.IndependentParameter(flavor, **self.parameters[model_name][flavor])
+                #self.indep_pars[model_name][flavor] = rl.IndependentParameter(flavor.replace('+', '_'), **self.parameters[model_name][flavor])
 
     def define_nuisance_parameters(self):
         self.nuisance_shapes = {}
@@ -264,7 +268,7 @@ class Fit():
                 #extra_args = "--robustHesse=1 "
                 extra_args += "--stepSize=0.001 --X-rtd=MINIMIZER_analytic --X-rtd MINIMIZER_MaxCalls=9999999 --cminFallbackAlgo Minuit2,Migrad,0:0.2 --X-rtd FITTER_NEW_CROSSING_ALGO --X-rtd FITTER_NEVER_GIVE_UP --X-rtd FITTER_BOUND"
                 #POIs = self.signal_name[model_name].replace('+', '_')
-                POIs = 'c_cc,b_bb,l'
+                POIs = ','.join([self.signal_name[model_name]] + [f for f in self.flavors if not f == self.signal_name[model_name]])
                 combineCommand = '\ncombine -M FitDiagnostics -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 setParameters = 'r=1'
@@ -284,7 +288,7 @@ class Fit():
         for model_name, model in self.models.items():
             script_job = os.path.join(self.fitdirs[model_name], 'job.sub')
             firstlines = ['#!/bin/bash\n', '#\n', '#SBATCH -p short\n', '#SBATCH --account=t3\n',
-                          '#SBATCH --job-name=fit_mutag\n', '#SBATCH --mem=3000M\n', '#SBATCH --time 01:00:00\n', '#SBATCH -o %x-%j.out\n', '#SBATCH -e %x-%j.err\n', '\n',
+                          '#SBATCH --job-name=fit_mutag\n', '#SBATCH --mem=3000M\n', '#SBATCH --time 00:30:00\n', '#SBATCH -o %x-%j.out\n', '#SBATCH -e %x-%j.err\n', '\n',
                           'echo HOME: $HOME\n', 'echo USER: $USER\n', 'echo SLURM_JOB_ID: $SLURM_JOB_ID\n', 'echo HOSTNAME: $HOSTNAME\n', '\n',
                           'mkdir -p /scratch/$USER/${SLURM_JOB_ID}\n', 'export TMPDIR=/scratch/$USER/${SLURM_JOB_ID}\n', '\n']
             lastlines = ['rm  -rf /scratch/$USER/${SLURM_JOB_ID}\n', '\n', 'date\n']
@@ -315,10 +319,6 @@ class Fit():
             print("Running fit of model '{}'".format(model_name))
             print("parameters:", self.parameters[model_name])
             os.system(command)
-            #if mode == "FitDiagnostics":
-            #    self.save_results(model_name, fitdir, mode)
-            #elif mode == "MultiDimFit":
-            #    self.save_scans(model_name, fitdir)
         os.chdir(parent_dir)
 
     def save_scans(self, model_name, fitdir):
@@ -349,8 +349,7 @@ class Fit():
         #print("Freezing all nuisances...".format(nuisance_name))
 
     def save_results(self, mode):
-        for model_name, model in self.models.items():
-            fitdir = self.fitdirs[model_name]
+        for model_name, fitdir in self.fitdirs.items():
             wp = model_name.split('wp')[0][-1]
             wpt = model_name.split('Pt-')[1]
             filename = os.path.join(fitdir, "higgsCombine_{}.{}.mH120.root".format(model_name, mode))
@@ -391,7 +390,7 @@ class Fit():
 
             for flavor in self.flavors:
                 if (flavor == POI): continue
-                par_result = fit_s.floatParsFinal().find(flavor.replace('+', '_'))
+                par_result = fit_s.floatParsFinal().find(flavor)
                 columns.append(flavor)
                 columns.append('{}Err'.format(flavor))
                 columns.append('SF({})'.format(flavor))
@@ -414,8 +413,6 @@ class Fit():
                 d.update({flavor : parVal, '{}Err'.format(flavor) : parErr, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(parVal, parErr)})
             f.close()
             df = pd.DataFrame(data=d)
-            if self.first[POI]:
-                df.to_csv(self.fitResults[POI], columns=columns, mode='w', header=True)
-                self.first[POI] = False
-            else:
-                df.to_csv(self.fitResults[POI], columns=columns, mode='a', header=False)
+            filename = os.path.join(self.fitdirs[model_name], "fitResults.csv")
+            print("Saving fit output in {}".format(filename))
+            df.to_csv(filename, columns=columns, mode='w', header=True)
