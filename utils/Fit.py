@@ -353,6 +353,8 @@ class Fit():
             wp = model_name.split('wp')[0][-1]
             wpt = model_name.split('Pt-')[1]
             filename = os.path.join(fitdir, "higgsCombine_{}.{}.mH120.root".format(model_name, mode))
+
+            # Wait until the file has been fully written by the job before reading it
             while iserror(uproot.open, filename):
                 pass
             combineFile = uproot.open(filename)
