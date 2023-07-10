@@ -1,5 +1,6 @@
 import os
 import sys
+from time import sleep
 import json
 
 import numpy as np
@@ -80,7 +81,7 @@ class Fit():
 
     def define_flavors(self):
         if self.scheme == '3f':
-            self.flavors = ['b+bb', 'c+cc', 'l']
+            self.flavors = ['b_bb', 'c_cc', 'l']
         elif self.scheme == '5f':
             self.flavors = ['bb', 'cc', 'b', 'c', 'l']
         else:
@@ -112,7 +113,7 @@ class Fit():
                 self.models[model_name] = rl.Model("sfModel")
 
     def load_parameters(self):
-        self.parameters = fit_parameters
+        self.parameters = fit_parameters[self.year]
         for model_name in self.models.keys():
             if not model_name in self.parameters.keys():
                 self.parameters[model_name] = {}
@@ -164,9 +165,9 @@ class Fit():
     def define_signal_name(self, model_name):
         self.tagger = [tagger for tagger in AK8Taggers if tagger in model_name][0]
         if self.tagger in AK8Taggers_bb:
-            self.signal_name[model_name] = ["b+bb" if self.scheme == '3f' else "bb"][0]
+            self.signal_name[model_name] = ["b_bb" if self.scheme == '3f' else "bb"][0]
         elif self.tagger in AK8Taggers_cc:
-            self.signal_name[model_name] = ["c+cc" if self.scheme == '3f' else "cc"][0]
+            self.signal_name[model_name] = ["c_cc" if self.scheme == '3f' else "cc"][0]
         else:
             raise Exception("There is no known tagger to calibrate in the given category")
 
@@ -190,7 +191,8 @@ class Fit():
                 self.define_signal_name(model_name)
                 channel = rl.Channel("sf{}".format(region))
                 for flavor in self.flavors:
-                    histname = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, "nominal")
+                    flavor_key = flavor.replace('_', '+')
+                    histname = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, "nominal")
                     template = self.get_templ(histname)
 
                     is_signal = True if flavor == self.signal_name[model_name] else False
@@ -220,11 +222,11 @@ class Fit():
                 model_name = cat.replace(region, '')
                 for nuisance_name, nuisance in self.nuisance_shapes[model_name].items():
                     if nuisance_name == "frac_bb":
-                        sample = self.models[model_name]["sf{}".format(region)][["b+bb" if self.scheme == '3f' else "bb"][0]]
+                        sample = self.models[model_name]["sf{}".format(region)][["b_bb" if self.scheme == '3f' else "bb"][0]]
                         sample.setParamEffect(nuisance, 1+self.frac_effect, 1-self.frac_effect)
                         continue
                     elif nuisance_name == "frac_cc":
-                        sample = self.models[model_name]["sf{}".format(region)][["c+cc" if self.scheme == '3f' else "cc"][0]]
+                        sample = self.models[model_name]["sf{}".format(region)][["c_cc" if self.scheme == '3f' else "cc"][0]]
                         sample.setParamEffect(nuisance, 1+self.frac_effect, 1-self.frac_effect)
                         continue
                     elif nuisance_name == "frac_l":
@@ -234,9 +236,10 @@ class Fit():
                     else:
                         for flavor in self.flavors:
                             sample = self.models[model_name]["sf{}".format(region)][flavor]
-                            histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, "nominal")
-                            histname_up   = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, nuisance.name+"Up")
-                            histname_down = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor, nuisance.name+"Down")
+                            flavor_key = flavor.replace('_', '+')
+                            histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, "nominal")
+                            histname_up   = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, nuisance.name+"Up")
+                            histname_down = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, nuisance.name+"Down")
                             h_nominal, _bins, _obs_name = self.get_templ(histname_nominal, sumw2=False)
                             h_up, _bins, _obs_name = self.get_templ(histname_up, sumw2=False)
                             h_down, _bins, _obs_name = self.get_templ(histname_down, sumw2=False)
@@ -244,6 +247,7 @@ class Fit():
                             r_down = h_down / h_nominal
                             effect_up = np.where(~(np.isnan(r_up) | np.isinf(r_up)), r_up, 1)
                             effect_down = np.where(~(np.isnan(r_down) | np.isinf(r_down)), r_down, 1)
+                            effect_down = np.where(effect_down < 0.0, 0.0, effect_down)
                             sample.setParamEffect(nuisance, effect_up, effect_down)
 
                 for nuisance_name, nuisance in self.nuisance_lnN[model_name].items():
@@ -268,9 +272,10 @@ class Fit():
                 #extra_args = "--robustHesse=1 "
                 extra_args += "--stepSize=0.001 --X-rtd=MINIMIZER_analytic --X-rtd MINIMIZER_MaxCalls=9999999 --cminFallbackAlgo Minuit2,Migrad,0:0.2 --X-rtd FITTER_NEW_CROSSING_ALGO --X-rtd FITTER_NEVER_GIVE_UP --X-rtd FITTER_BOUND"
                 #POIs = self.signal_name[model_name].replace('+', '_')
-                POIs = ','.join([self.signal_name[model_name]] + [f for f in self.flavors if not f == self.signal_name[model_name]])
+                POIs = ','.join([self.signal_name[model_name]] + [f.replace('+', '_') for f in self.flavors if not f.replace('+', '_') == self.signal_name[model_name]])
                 combineCommand = '\ncombine -M FitDiagnostics -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
-                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
+                # N.B.: In the MultiDimFit we set the POI to be only the signal SF, so that we can profile it and extract the breakdown of uncertainties
+                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --algo=singles --cminDefaultMinimizerStrategy 0 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, self.signal_name[model_name], extra_args)
                 setParameters = 'r=1'
                 freezeParameters = 'r'
                 for par in self.freeze[model_name]:
@@ -281,12 +286,32 @@ class Fit():
                 combineCommand_MultiDimFit = combineCommand_MultiDimFit.replace('--setParameters r=1', '--setParameters {}'.format(setParameters))
                 combineCommand_MultiDimFit = combineCommand_MultiDimFit.replace('--freezeParameters r', '--freezeParameters {}'.format(freezeParameters))
                 file.write(combineCommand)
+            # Write the commands for the breakdown of uncertainties in the bash script
+            parameter_ranges = ":".join("{}=0.5,2".format(poi) for poi in self.flavors)
+            combineFile = "higgsCombine_{}.MultiDimFit.mH120.root".format(model_name)
+            breakdown_lines = [
+                "combine {} -M MultiDimFit -n .scan.total --algo grid --snapshotName MultiDimFit --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --setParameterRanges {}\n".format(combineFile, self.signal_name[model_name], parameter_ranges),
+            ]
+            nuisances = list(self.nuisance_shapes[model_name].keys()) + list(self.nuisance_lnN[model_name].keys())
+            nuisances_to_freeze = []
+            for nuisance_name in nuisances:
+                nuisances_to_freeze.append(nuisance_name)
+                combineCommand = "combine {} -M MultiDimFit -n .freeze.{} --algo grid --snapshotName MultiDimFit --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r,{} --setParameterRanges {}\n".format(combineFile, nuisance_name, self.signal_name[model_name], ','.join(nuisances_to_freeze), parameter_ranges)
+                breakdown_lines.append(combineCommand + '\n')
+            files = ["higgsCombine.freeze.{}.MultiDimFit.mH120.root".format(nuisance_name) for nuisance_name in nuisances]
+            others = ' '.join(["{}:{}:{}".format(files[i], nuisances[i], i+2) for i in range(len(files))])
+            scriptName = '/work/mmarcheg/BTVNanoCommissioning/scripts/fit/plot1DScanWithOutput.py'
+            combineCommand = 'python {} higgsCombine.scan.total.MultiDimFit.mH120.root --main-label "Total Uncert." --others {} --output breakdown --y-max 10 --y-cut 40 --breakdown "{},stat" --POI {}'.format(scriptName, others, ','.join(nuisances), self.signal_name[model_name].replace('+', '_'))
+            breakdown_lines.append(combineCommand + '\n')
+            
             with open(script_MultiDimFit, 'a') as file:
-                file.write(combineCommand_MultiDimFit)
+                file.write(combineCommand_MultiDimFit + '\n')
+                file.writelines(breakdown_lines)
 
     def build_job_submission_script(self):
         for model_name, model in self.models.items():
             script_job = os.path.join(self.fitdirs[model_name], 'job.sub')
+            script_job_multidimfit = os.path.join(self.fitdirs[model_name], 'job_MultiDimFit.sub')
             firstlines = ['#!/bin/bash\n', '#\n', '#SBATCH -p short\n', '#SBATCH --account=t3\n',
                           '#SBATCH --job-name=fit_mutag\n', '#SBATCH --mem=3000M\n', '#SBATCH --time 00:30:00\n', '#SBATCH -o %x-%j.out\n', '#SBATCH -e %x-%j.err\n', '\n',
                           'echo HOME: $HOME\n', 'echo USER: $USER\n', 'echo SLURM_JOB_ID: $SLURM_JOB_ID\n', 'echo HOSTNAME: $HOSTNAME\n', '\n',
@@ -296,15 +321,20 @@ class Fit():
                 file.writelines(firstlines)
                 file.writelines(["cd /work/mmarcheg/CMSSW_10_2_13\n", "cmsenv\n", "cd {}\n".format(self.fitdirs[model_name]), "bash build.sh\n"])
                 file.writelines(lastlines)
+            
+            with open(script_job_multidimfit, 'a') as file:
+                file.writelines(firstlines)
+                file.writelines(["cd /work/mmarcheg/CMSSW_10_2_13\n", "cmsenv\n", "cd {}\n".format(self.fitdirs[model_name]), "bash build_MultiDimFit.sh\n"])
+                file.writelines(lastlines)
     def run_fits(self, mode, job=True):
         if mode == "FitDiagnostics":
             command = 'bash build.sh'
             if job == True:
                 command = 'sbatch job.sub'
         elif mode == "MultiDimFit":
-            command = 'bash build_{}.sh'.format(mode)
+            command = 'bash build_MultiDimFit.sh'
             if job == True:
-                raise NotImplementedError
+                command = 'sbatch job_MultiDimFit.sub'
 
         parent_dir = os.getcwd()
         if self.scheme == '3f':
@@ -340,9 +370,9 @@ class Fit():
         others = ' '.join(["{}:{}:{}".format(files[i], nuisances[i], i+2) for i in range(len(files))])
         scriptName = '/work/mmarcheg/BTVNanoCommissioning/scripts/fit/plot1DScanWithOutput.py'
         combineCommand = 'python {} higgsCombine.scan.total.MultiDimFit.mH120.root --main-label "Total Uncert."\
-                          --others {} --output breakdown --y-max 10 --y-cut 40 --breakdown "{},stat" --POI {}'.format(scriptName, others, ','.join(nuisances), self.signal_name[model_name].replace('+', '_'))
+                          --others {} --output breakdown --y-max 10 --y-cut 40 --breakdown "{},stat" --POI {}'.format(scriptName, others, ','.join(nuisances), self.signal_name[model_name])
         print(combineCommand)
-        os.system(combineCommand)        
+        os.system(combineCommand)
         #nuisances_to_freeze = nuisances
         #combineCommand = "combine {} -M MultiDimFit -n scan.freeze_all --algo grid --snapshotName MultiDimFit --setParameterRanges r=0,2 --freezeParameters {}".format(combineFile, ','.join(nuisances_to_freeze))
         #print(combineCommand)
@@ -356,7 +386,8 @@ class Fit():
 
             # Wait until the file has been fully written by the job before reading it
             while iserror(uproot.open, filename):
-                pass
+                print("{}: Waiting 1 second before reading the output file...".format(model_name))
+                sleep(1)
             combineFile = uproot.open(filename)
 
             combineTree = combineFile['limit']
@@ -364,6 +395,9 @@ class Fit():
             results = combineBranches['limit']
 
             if len(results) < 4:
+                lines = ["FAILED_FIT\n", "{}\n".format(len(results)), "{}\n".format(results)]
+                with open(os.path.join(self.fitdirs[model_name], "FAILED_FIT"), 'w') as f:
+                    f.writelines(lines)
                 print("FIT FAILED : ", model_name)
                 return
 
