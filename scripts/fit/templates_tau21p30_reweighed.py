@@ -56,10 +56,11 @@ flavors = {'l', 'c', 'b', 'cc', 'bb'}
 samples_qcd_muenriched = ('QCD_MuEnriched')
 samples_vjets_top = ('VJets', 'SingleTop_ttbar')
 samples_madgraph = ('QCD_HT')
-fit_variables = [ 'FatJetGood_logsumcorrSVmass', 'FatJetGood_logsumcorrSVmass_tau21' ]
+fit_variables = [ 'FatJetGood_logsumcorrSVmass_tau21' ]
 sf_label = 'sf_ptetatau21_reweighting'
 variations_psweight = ['psWeight_isrUp', 'psWeight_isrDown', 'psWeight_fsrUp', 'psWeight_fsrDown']
-cuts_tau21_2d = [0.2, 0.25, 0.3, 0.35, 0.4]
+# Only tau21 < 0.3 cut is considered in this script
+cuts_tau21_2d = [0.3]
 schemes = ['3f', '5f']
 output_templates = {k : {'3f' : {}, '5f' : {}} for k in ['inclusive'] + cuts_tau21_2d}
 sumw_passfail_data = {k : {'3f' : {}, '5f' : {}} for k in ['inclusive'] + cuts_tau21_2d}
@@ -239,9 +240,8 @@ for histname in fit_variables:
                         ratio_madgraph_pythia = np.nan_to_num(sumw_nominal_madgraph / sumw_nominal_qcd_muenriched, nan=1.0)
                         output_templates[tau21_cut][scheme][f"{histname}_{year}_{cat}_MC_{f}_QCDFlvComposUp"] = [sumw, sumw2]
                         sumw = sumw_nominal_qcd_muenriched / ratio_madgraph_pythia
-                        sumw = np.nan_to_num(np.where(sumw < 0, 0.0, sumw), nan=0.0)
                         output_templates[tau21_cut][scheme][f"{histname}_{year}_{cat}_MC_{f}_QCDFlvComposDown"] = [sumw, sumw2]
-for tau21_cut in ['inclusive'] + cuts_tau21_2d:
+for tau21_cut in cuts_tau21_2d:
     for scheme in schemes:
         # Reweighting on fit variable in pass+fail
         for template_name, num in sumw_passfail_data[tau21_cut][scheme].items():
@@ -254,13 +254,14 @@ for tau21_cut in ['inclusive'] + cuts_tau21_2d:
             for var, den in var_dict.items():
                 map_renormalization[tau21_cut][scheme][template_name][var] = sum(np.nan_to_num(num, nan=0)) / sum(np.nan_to_num(den, nan=0))
 
-#### Saving bare templates into pickle file
 if not os.path.exists(args.output):
     os.makedirs(args.output)
 
 label_tau21 = {tau21 : f'tau21p{int(100*tau21)}' for tau21 in cuts_tau21_2d}
 label_tau21.update({'inclusive' : 'inclusive'})
 
+"""
+#### Saving bare templates into pickle file
 for tau21_cut, templates_dict in output_templates.items():
     for scheme, templates in templates_dict.items():
         filename = args.input.replace('.coffea', f'_templates_{scheme}_{label_tau21[tau21_cut]}.pkl')
@@ -272,6 +273,7 @@ for tau21_cut, templates_dict in output_templates.items():
         outfile = open( filepath, 'wb' )
         pickle.dump( templates, outfile, protocol=2 )
         outfile.close()
+"""
 
 """
 # Save templates with MC-to-data reweighting in the pass+fail region
@@ -297,8 +299,10 @@ for histname in ["FatJetGood_logsumcorrSVmass"]:
                 outfile.close()
 """
 
-# Save templates with renormalized varied shapes to extract the overall normalization effect from the shape variation
-for histname in ["FatJetGood_logsumcorrSVmass"]:
+# Save templates with MC-to-data reweighting in the pass+fail region and
+# with renormalized varied shapes to extract the overall normalization effect from the shape variation
+# for tau21 < 0.3
+for histname in ["FatJetGood_logsumcorrSVmass_tau21"]:
     for scheme in ['3f', '5f']:
         if scheme == '3f':
             flavors = {'l', 'c+cc', 'b+bb'}
@@ -306,16 +310,14 @@ for histname in ["FatJetGood_logsumcorrSVmass"]:
             flavors = {'l', 'c', 'b', 'cc', 'bb'}
         for year in years:
             for tau21_cut, templates_dict in output_templates.items():
-                if not tau21_cut == 'inclusive':
+                if not tau21_cut == 0.3:
                     continue
                 templates_fit_variable_reweighed = {}
-                templates_renormalized = {}
                 for cat in categories:
                     if not any(['pass' in cat, 'fail' in cat]):
                         continue
                     model_name = get_model_name(cat)
                     reweighting_factor = map_reweighting[tau21_cut][scheme][f"{histname}_{year}_{model_name}"]
-                    templates_renormalized[f"{histname}_{year}_{cat}_DATA"] = output_templates[tau21_cut][scheme][f"{histname}_{year}_{cat}_DATA"]
                     templates_fit_variable_reweighed[f"{histname}_{year}_{cat}_DATA"] = output_templates[tau21_cut][scheme][f"{histname}_{year}_{cat}_DATA"]
                     for f in flavors:
                         for var in variations + variations_psweight + ["QCDFlvComposUp", "QCDFlvComposDown"]:
@@ -327,49 +329,10 @@ for histname in ["FatJetGood_logsumcorrSVmass"]:
                                 renormalizing_factor = map_renormalization[tau21_cut][scheme][f"{histname}_{year}_{model_name}"][var]
                             else:
                                 renormalizing_factor = 1.0
-                            templates_renormalized[template_name] = [ renormalizing_factor * sumw, renormalizing_factor**2 * sumw2 ]
                             templates_fit_variable_reweighed[template_name] = [ reweighting_factor * renormalizing_factor * sumw, reweighting_factor**2 * renormalizing_factor**2 * sumw2 ]
-                filename_renormalized = args.input.replace('.coffea', f'_templates_{scheme}_{label_tau21[tau21_cut]}_renormalized.pkl')
-                filename_fit_variable_reweighed = args.input.replace('.coffea', f'_templates_{scheme}_{label_tau21[tau21_cut]}_fit_variable_reweighed.pkl')
-                for filename, temp in zip([filename_renormalized, filename_fit_variable_reweighed], [templates_renormalized, templates_fit_variable_reweighed]):
-                    filepath = os.path.join(args.output, filename)
-                    print(f"Saving templates file to {filepath}")
-                    outfile = open( filepath, 'wb' )
-                    pickle.dump( temp, outfile, protocol=2 )
-                    outfile.close()
-
-# Save templates with renormalized varied shapes to extract the overall normalization effect from the shape variation (2D histogram)
-for histname in ["FatJetGood_logsumcorrSVmass_tau21"]:
-    for scheme in ['3f', '5f']:
-        if scheme == '3f':
-            flavors = {'l', 'c+cc', 'b+bb'}
-        elif scheme == '5f':
-            flavors = {'l', 'c', 'b', 'cc', 'bb'}
-        for year in years:
-            for tau21_cut, templates_dict in output_templates.items():
-                if tau21_cut == 'inclusive':
-                    continue
-                filename = args.input.replace('.coffea', f'_templates_{scheme}_{label_tau21[tau21_cut]}_renormalized.pkl')
-                #if tau21_cut == "inclusive":
-                templates_renormalized = {}
-                for cat in categories:
-                    if not any(['pass' in cat, 'fail' in cat]):
-                        continue
-                    model_name = get_model_name(cat)
-                    templates_renormalized[f"{histname}_{year}_{cat}_DATA"] = output_templates[tau21_cut][scheme][f"{histname}_{year}_{cat}_DATA"]
-                    for f in flavors:
-                        for var in variations + variations_psweight + ["QCDFlvComposUp", "QCDFlvComposDown"]:
-                            if var in variations_reweighting:
-                                continue
-                            template_name = f"{histname}_{year}_{cat}_MC_{f}_{var}"
-                            sumw, sumw2 = output_templates[tau21_cut][scheme][template_name]
-                            if var in shapes_to_renormalize:
-                                renormalizing_factor = map_renormalization[tau21_cut][scheme][f"{histname}_{year}_{model_name}"][var]
-                            else:
-                                renormalizing_factor = 1.0
-                            templates_renormalized[template_name] = [ renormalizing_factor * sumw, renormalizing_factor**2 * sumw2 ]
+                filename = args.input.replace('.coffea', f'_templates_{scheme}_{label_tau21[tau21_cut]}_fit_variable_reweighed.pkl')
                 filepath = os.path.join(args.output, filename)
                 print(f"Saving templates file to {filepath}")
                 outfile = open( filepath, 'wb' )
-                pickle.dump( templates_renormalized, outfile, protocol=2 )
+                pickle.dump( templates_fit_variable_reweighed, outfile, protocol=2 )
                 outfile.close()

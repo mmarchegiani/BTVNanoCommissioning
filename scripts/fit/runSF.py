@@ -1,5 +1,6 @@
 import os
 import sys
+from time import sleep
 import argparse
 import json
 import pandas as pd
@@ -17,6 +18,7 @@ parser.add_argument('--scheme', type=str, choices=['3f', '5f'],  help='3-flavor 
 parser.add_argument('--binwidth', type=float, default=0.2, choices=[0.1, 0.2, 0.4],  help='Specify the binwidth of the logsumcorrmass distribution', required=False)
 parser.add_argument('--year', type=str, choices=["2016_PreVFP", "2016_PostVFP", "2017", "2018"], help='Specify the data-taking year', required=True)
 parser.add_argument('-m', '--mode', type=str, default="FitDiagnostics", choices=["FitDiagnostics", "MultiDimFit", "all"], help='Specify combine mode', required=False)
+parser.add_argument('--dim', type=int, default=1, required=False)
 parser.add_argument('--no-jobs', action="store_true", required=False)
 args = parser.parse_args()
 
@@ -28,19 +30,34 @@ if os.path.exists(args.output):
     sys.exit("The output folder {} is already existing. Please choose a different folder name.".format(args.output))
 
 failed_fits = []
-for var in ['FatJetGood_logsumcorrSVmass']:
-    fit = Fit(args.input, args.output, categories, var, args.year, xlim=(-2.4, 6.0), binwidth=args.binwidth, scheme=args.scheme)
-    if args.mode == "all":
-        fit.run_fits("FitDiagnostics")
-        fit.run_fits("MultiDimFit")
-    else:
-        fit.run_fits(args.mode, job=not args.no_jobs)
-        fit.save_results(args.mode)
+if args.dim == 1:
+    var = 'FatJetGood_logsumcorrSVmass'
+elif args.dim == 2:
+    var = 'FatJetGood_logsumcorrSVmass_tau21'
+else:
+    raise NotImplementedError
+
+fit = Fit(args.input, args.output, categories, var, args.year, xlim=(-2.4, 6.0), binwidth=args.binwidth, scheme=args.scheme)
+if args.mode == "all":
+    fit.run_fits("FitDiagnostics")
+    fit.run_fits("MultiDimFit")
+elif args.mode == "FitDiagnostics":
+    fit.run_fits(args.mode, job=not args.no_jobs)
+    fit.save_results(args.mode)
+elif args.mode == "MultiDimFit":
+    fit.run_fits(args.mode, job=not args.no_jobs)
+
+if args.mode == "FitDiagnostics":
+    print("Waiting 10 seconds...")
+    sleep(10)
+
     first_bb = True
     first_cc = True
+    folders_corrupted = []
     for model_name, folder in fit.fitdirs.items():
         file_results = os.path.join(folder, "fitResults.csv")
         if not os.path.exists(file_results):
+            folders_corrupted.append(folder)
             continue
         df = pd.read_csv(file_results)
         kwargs = {'mode' : 'a', 'header' : False}
@@ -55,3 +72,7 @@ for var in ['FatJetGood_logsumcorrSVmass']:
                 kwargs = {'mode' : 'w', 'header' : True}
                 first_cc = False
         df.to_csv(file_results_all, **kwargs)
+
+    print("Corrupted folders:")
+    for folder in folders_corrupted:
+        print(folder)
