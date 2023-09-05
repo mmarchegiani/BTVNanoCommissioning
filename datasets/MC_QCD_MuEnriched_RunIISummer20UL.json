@@ -8,7 +8,7 @@
             "isMC": "True",
             "xsec": "7055.0",
             "part": "Pt-170To300",
-            "sum_genweights": "69282280.0",
+            "sum_genweights": "71870976.0",
             "nevents": "71870974",
             "size": "148807256019"
         },
@@ -90,7 +90,7 @@
             "isMC": "True",
             "xsec": "7055.0",
             "part": "Pt-170To300",
-            "sum_genweights": "73036080.0",
+            "sum_genweights": "73071992.0",
             "nevents": "73071987",
             "size": "154110112005"
         },
@@ -200,7 +200,7 @@
             "isMC": "True",
             "xsec": "7055.0",
             "part": "Pt-170To300",
-            "sum_genweights": "33880928.0",
+            "sum_genweights": "34183336.0",
             "nevents": "34183334",
             "size": "69438866112"
         },
@@ -287,7 +287,7 @@
             "isMC": "True",
             "xsec": "7055.0",
             "part": "Pt-170To300",
-            "sum_genweights": "33880930.0",
+            "sum_genweights": "37080544.0",
             "nevents": "37080544",
             "size": "75724092142"
         },
@@ -366,7 +366,7 @@
             "isMC": "True",
             "xsec": "619.3",
             "part": "Pt-300To470",
-            "sum_genweights": "58771420.0",
+            "sum_genweights": "58949764.0",
             "nevents": "58949756",
             "size": "139076908216"
         },
@@ -453,7 +453,7 @@
             "isMC": "True",
             "xsec": "619.3",
             "part": "Pt-300To470",
-            "sum_genweights": "58573944.0",
+            "sum_genweights": "58692912.0",
             "nevents": "58692910",
             "size": "140172537032"
         },
@@ -537,7 +537,7 @@
             "isMC": "True",
             "xsec": "619.3",
             "part": "Pt-300To470",
-            "sum_genweights": "29908656.0",
+            "sum_genweights": "29824712.0",
             "nevents": "29824712",
             "size": "68582751996"
         },
@@ -584,7 +584,7 @@
             "isMC": "True",
             "xsec": "619.3",
             "part": "Pt-300To470",
-            "sum_genweights": "29908658.0",
+            "sum_genweights": "28465388.0",
             "nevents": "28465385",
             "size": "65988441002"
         },
@@ -646,7 +646,7 @@
             "isMC": "True",
             "xsec": "59.24",
             "part": "Pt-470To600",
-            "sum_genweights": "38645928.0",
+            "sum_genweights": "38453440.0",
             "nevents": "38453296",
             "size": "96593705027"
         },
@@ -746,7 +746,7 @@
             "isMC": "True",
             "xsec": "59.24",
             "part": "Pt-470To600",
-            "sum_genweights": "39816956.0",
+            "sum_genweights": "39491892.0",
             "nevents": "39491752",
             "size": "99944309404"
         },
@@ -804,7 +804,7 @@
             "isMC": "True",
             "xsec": "59.24",
             "part": "Pt-470To600",
-            "sum_genweights": "14220706.0",
+            "sum_genweights": "19771532.0",
             "nevents": "19771458",
             "size": "48379294060"
         },
@@ -842,7 +842,7 @@
             "isMC": "True",
             "xsec": "59.24",
             "part": "Pt-470To600",
-            "sum_genweights": "14220705.0",
+            "sum_genweights": "19695374.0",
             "nevents": "19695298",
             "size": "48690987104"
         },
@@ -906,7 +906,7 @@
             "isMC": "True",
             "xsec": "18.21",
             "part": "Pt-600To800",
-            "sum_genweights": "37158776.0",
+            "sum_genweights": "37197944.0",
             "nevents": "37197942",
             "size": "96996008349"
         },
@@ -1026,7 +1026,7 @@
             "isMC": "True",
             "xsec": "18.21",
             "part": "Pt-600To800",
-            "sum_genweights": "39326156.0",
+            "sum_genweights": "39321940.0",
             "nevents": "39321940",
             "size": "103173218503"
         },
@@ -1100,7 +1100,7 @@
             "isMC": "True",
             "xsec": "18.21",
             "part": "Pt-600To800",
-            "sum_genweights": "18763140.0",
+            "sum_genweights": "18165740.0",
             "nevents": "18165741",
             "size": "46265102187"
         },
@@ -1173,7 +1173,7 @@
             "isMC": "True",
             "xsec": "18.21",
             "part": "Pt-600To800",
-            "sum_genweights": "18763140.0",
+            "sum_genweights": "19598816.0",
             "nevents": "19598815",
             "size": "50372651355"
         },
@@ -1251,7 +1251,7 @@
             "isMC": "True",
             "xsec": "3.275",
             "part": "Pt-800To1000",
-            "sum_genweights": "78314176.0",
+            "sum_genweights": "78942992.0",
             "nevents": "78942993",
             "size": "213570795534"
         },
@@ -1361,7 +1361,7 @@
             "isMC": "True",
             "xsec": "3.275",
             "part": "Pt-800To1000",
-            "sum_genweights": "78133744.0",
+            "sum_genweights": "78215560.0",
             "nevents": "78215559",
             "size": "213293648728"
         },
@@ -1478,7 +1478,7 @@
             "isMC": "True",
             "xsec": "3.275",
             "part": "Pt-800To1000",
-            "sum_genweights": "38921528.0",
+            "sum_genweights": "38913228.0",
             "nevents": "38913226",
             "size": "102992477824"
         },
@@ -1577,7 +1577,7 @@
             "isMC": "True",
             "xsec": "3.275",
             "part": "Pt-800To1000",
-            "sum_genweights": "38921524.0",
+            "sum_genweights": "38933940.0",
             "nevents": "38933940",
             "size": "104095021897"
         },
@@ -1673,7 +1673,7 @@
             "isMC": "True",
             "xsec": "1.078",
             "part": "Pt-1000ToInf",
-            "sum_genweights": "27369976.0",
+            "sum_genweights": "27427130.0",
             "nevents": "27427130",
             "size": "77290902719"
         },
@@ -1722,7 +1722,7 @@
             "isMC": "True",
             "xsec": "1.078",
             "part": "Pt-1000ToInf",
-            "sum_genweights": "27537496.0",
+            "sum_genweights": "27478274.0",
             "nevents": "27478273",
             "size": "78100807624"
         },
@@ -1777,7 +1777,7 @@
             "isMC": "True",
             "xsec": "1.078",
             "part": "Pt-1000ToInf",
-            "sum_genweights": "14243204.0",
+            "sum_genweights": "13905446.0",
             "nevents": "13905446",
             "size": "38314224149"
         },
@@ -1812,7 +1812,7 @@
             "isMC": "True",
             "xsec": "1.078",
             "part": "Pt-1000ToInf",
-            "sum_genweights": "33880928.0",
+            "sum_genweights": "13660999.0",
             "nevents": "13660999",
             "size": "38152434367"
         },
