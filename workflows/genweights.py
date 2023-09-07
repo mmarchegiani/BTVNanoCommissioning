@@ -1,11 +1,8 @@
 import copy
-import os
-from collections import defaultdict
 
 import awkward as ak
 
 from workflows.fatjet_base import fatjetBaseProcessor
-from pocket_coffea.utils.configurator import Configurator
 
 class genWeightsProcessor(fatjetBaseProcessor):
 
@@ -24,11 +21,10 @@ class genWeightsProcessor(fatjetBaseProcessor):
         self.output['cutflow']['initial'][self._sample] += self.nEvents_initial
         if self._isMC:
             # This is computed before any preselection
-            self.output['sum_genweights'][self._sample] = ak.sum(self.events.genWeight)
+            key = f"{self._sample}_{self._part}"
+            self.output['sum_genweights'][key] = ak.sum(self.events.genWeight)
             if self._hasSubsamples:
                 for subs in self._subsamples_names:
-                    self.output['sum_genweights'][subs] = self.output['sum_genweights'][
-                        self._sample
-                    ]
+                    self.output['sum_genweights'][subs] = self.output['sum_genweights'][key]
 
         return self.output
