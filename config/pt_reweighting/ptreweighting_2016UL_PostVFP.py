@@ -13,10 +13,10 @@ samples = ["QCD_MuEnriched",
 
 cfg =  {
     "dataset" : {
-        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_local.json",
-                  "datasets/MC_VJets_RunIISummer20UL_redirector.json",
+        "jsons": ["datasets/MC_QCD_MuEnriched_RunIISummer20UL_redirector.json",
+                  "datasets/MC_VJets_RunIISummer20UL.json",
                   "datasets/MC_top_RunIISummer20UL_local.json",
-                  "datasets/DATA_BTagMu_RunIISummer20UL_local.json"],
+                  "datasets/DATA_BTagMu_RunIISummer20UL_redirector.json"],
         "filter" : {
             "samples": samples,
             "samples_exclude" : [],
@@ -26,7 +26,7 @@ cfg =  {
 
     # Input and output files
     "workflow" : ptReweightProcessor,
-    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_tau21_reweighting_2016_PostVFP_withJES",
+    "output"   : "output/pocket_coffea/pt_reweighting/pt_eta_tau21_reweighting_2016_PostVFP_NanoAODv9",
     "workflow_options" : {},
 
     "run_options" : {
@@ -34,8 +34,8 @@ cfg =  {
         "workers"        : 1,
         "scaleout"       : 200,
         "queue"          : "standard",
-        "walltime"       : "12:00:00",
-        "mem_per_worker" : "8GB", # GB
+        "walltime"       : "4:00:00",
+        "mem_per_worker" : "4GB", # GB
         "exclusive"      : False,
         "chunk"          : 100000,
         "retries"        : 50,
