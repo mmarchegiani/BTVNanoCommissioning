@@ -1,0 +1,80 @@
+{
+    "DATA_BTagMu": {
+        "sample": "DATA",
+        "json_output": "datasets/DATA_BTagMu_RunIISummer20UL.json",
+        "files": [
+            {
+                "das_names": [
+                    "/BTagMu/Run2016B-ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD"
+                ],
+                "dbs_instance": "prod/global",
+                "metadata": {
+                    "year": "2016_PreVFP",
+                    "isMC": false,
+                    "primaryDataset": "BTagMu",
+                    "era": "B_ver1"
+                }
+            },
+            {
+                "das_names": [
+                    "/BTagMu/Run2016B-ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD"
+                ],
+                "dbs_instance": "prod/global",
+                "metadata": {
+                    "year": "2016_PreVFP",
+                    "isMC": false,
+                    "primaryDataset": "BTagMu",
+                    "era": "B_ver2"
+                }
+            },
+            {
+                "das_names": [
+                    "/BTagMu/Run2016C-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD"
+                ],
+                "dbs_instance": "prod/global",
+                "metadata": {
+                    "year": "2016_PreVFP",
+                    "isMC": false,
+                    "primaryDataset": "BTagMu",
+                    "era": "C"
+                }
+            },
+            {
+                "das_names": [
+                    "/BTagMu/Run2016D-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD"
+                ],
+                "dbs_instance": "prod/global",
+                "metadata": {
+                    "year": "2016_PreVFP",
+                    "isMC": false,
+                    "primaryDataset": "BTagMu",
+                    "era": "D"
+                }
+            },
+            {
+                "das_names": [
+                    "/BTagMu/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD"
+                ],
+                "dbs_instance": "prod/global",
+                "metadata": {
+                    "year": "2016_PreVFP",
+                    "isMC": false,
+                    "primaryDataset": "BTagMu",
+                    "era": "E"
+                }
+            },
+            {
+                "das_names": [
+                    "/BTagMu/Run2016F-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD"
+                ],
+                "dbs_instance": "prod/global",
+                "metadata": {
+                    "year": "2016_PreVFP",
+                    "isMC": false,
+                    "primaryDataset": "BTagMu",
+                    "era": "F"
+                }
+            }
+        ]
+    }
+}

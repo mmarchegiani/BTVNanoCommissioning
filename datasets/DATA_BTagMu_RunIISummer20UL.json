@@ -516,7 +516,7 @@
             "root://gfe02.grid.hep.ph.ic.ac.uk:1094//pnfs/hep.ph.ic.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/071B7DD0-0D2F-B64B-86E0-A903492F707C.root",
             "root://xrootd.echo.stfc.ac.uk//store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/0AE944B3-C78B-1946-B5AC-749AAAD01873.root",
             "root://gfe02.grid.hep.ph.ic.ac.uk:1094//pnfs/hep.ph.ic.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/0FE8CF76-B2BB-4146-88BF-F93AFBAB820F.root",
-            "root://sbgse1.in2p3.fr//store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/1009E137-25B3-4241-85E9-5A02B83D98B4.root",
+            "root://ingrid-se03.cism.ucl.ac.be:1094//store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/1009E137-25B3-4241-85E9-5A02B83D98B4.root",
             "root://gfe02.grid.hep.ph.ic.ac.uk:1094//pnfs/hep.ph.ic.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/132F2588-30A8-D24B-B837-AFFEC3EB14EF.root",
             "root://xrootd.echo.stfc.ac.uk//store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/204250BE-2587-4544-85F1-4C5D2F6D4BBE.root",
             "root://gfe02.grid.hep.ph.ic.ac.uk:1094//pnfs/hep.ph.ic.ac.uk/data/cms/store/data/Run2016B/BTagMu/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2530000/250310A8-853B-3441-8145-B14502D083D9.root",
@@ -649,13 +649,13 @@
             "size": "12902107401"
         },
         "files": [
-            "root://sbgse1.in2p3.fr//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/0762481F-8DDF-B445-A5EF-34A9A2BD8B97.root",
-            "root://sbgse1.in2p3.fr//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/544E0FA9-1ADB-4A41-942B-0546BD059278.root",
-            "root://sbgse1.in2p3.fr//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/5F0731AC-EBCD-474F-8C6A-BF31FB91E382.root",
+            "root://xrootd.echo.stfc.ac.uk//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/0762481F-8DDF-B445-A5EF-34A9A2BD8B97.root",
+            "root://xrootd.echo.stfc.ac.uk//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/544E0FA9-1ADB-4A41-942B-0546BD059278.root",
+            "root://gridftp.ifca.es//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/5F0731AC-EBCD-474F-8C6A-BF31FB91E382.root",
             "root://t2-xrdcms.lnl.infn.it:7070//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/8B410AE6-3C1B-5A4F-8C76-7CECBCAF3BD6.root",
-            "root://sbgse1.in2p3.fr//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/9B856949-0699-E84B-9429-079BB4AB299A.root",
-            "root://sbgse1.in2p3.fr//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/A3A214E7-F4A6-EC46-A831-A1864574E783.root",
-            "root://sbgse1.in2p3.fr//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/B39A22DB-C129-8442-9122-EA741062426D.root",
+            "root://xrootd.echo.stfc.ac.uk//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/9B856949-0699-E84B-9429-079BB4AB299A.root",
+            "root://xrootd.echo.stfc.ac.uk//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/A3A214E7-F4A6-EC46-A831-A1864574E783.root",
+            "root://xrootd.echo.stfc.ac.uk//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/B39A22DB-C129-8442-9122-EA741062426D.root",
             "root://t2-xrdcms.lnl.infn.it:7070//store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/CD98A910-C656-D545-A008-1A2309B5122D.root",
             "root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat/store/data/Run2016F/BTagMu/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/2520000/E726F794-9E01-C642-BEBE-F05E65135FCF.root"
         ]
