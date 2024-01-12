@@ -5,20 +5,26 @@ import argparse
 import json
 import pandas as pd
 
-sys.path.append('/work/mmarcheg/BTVNanoCommissioning')
+sys.path.append('/work/mmarcheg/BTV/BTVNanoCommissioning')
 
 from utils.Fit import Fit
-from parameters import categories, AK8Taggers_bb, AK8Taggers_cc
+from parameters_fit import fit_parameters
+from parameters import categories, AK8Taggers, AK8Taggers_bb, AK8Taggers_cc
+
 
 parser = argparse.ArgumentParser(description='Save histograms in pickle format for combine fit')
 parser.add_argument('-i', '--input', default=None, help='Input templates', required=True)
 parser.add_argument('-o', '--output', default="/work/mmarcheg/BTVNanoCommissioning/output/fit", help='Output folder', required=True)
 parser.add_argument('--only', type=str, default=None, help='Filter categories by key', required=False)
 parser.add_argument('--scheme', type=str, choices=['3f', '5f'],  help='3-flavor scheme', required=True)
+parser.add_argument('--npoi', type=int, choices=[1,3],  help='Number of POIs to be used in the fit. Available choices: 1 POI (only dominant flavour will be floating) or 3 POIs (all 3 POIs will be floating)', required=True)
 parser.add_argument('--binwidth', type=float, default=0.2, choices=[0.1, 0.2, 0.4],  help='Specify the binwidth of the logsumcorrmass distribution', required=False)
 parser.add_argument('--year', type=str, choices=["2016_PreVFP", "2016_PostVFP", "2017", "2018"], help='Specify the data-taking year', required=True)
+parser.add_argument('--frac', type=float, default=1.2, help='Relative variation of the frac_* parameters', required=False)
+parser.add_argument('--setParameterRanges', type=str, default=None, help='Set the range of the POIs with a string of the form "POI1:min,max:POI2:min,max:POI3:min,max"', required=False)
 parser.add_argument('-m', '--mode', type=str, default="FitDiagnostics", choices=["FitDiagnostics", "MultiDimFit", "all"], help='Specify combine mode', required=False)
 parser.add_argument('--dim', type=int, default=1, required=False)
+parser.add_argument('--passonly', action="store_true", required=False)
 parser.add_argument('--no-jobs', action="store_true", required=False)
 args = parser.parse_args()
 
@@ -37,7 +43,54 @@ elif args.dim == 2:
 else:
     raise NotImplementedError
 
-fit = Fit(args.input, args.output, categories, var, args.year, xlim=(-2.4, 6.0), binwidth=args.binwidth, scheme=args.scheme)
+parameter_ranges_default = {
+    "l"    : {"value" : 1, "lo" : 0.5, "hi" : 2},
+    "b_bb" : {"value" : 1, "lo" : 0.5, "hi" : 2},
+    "c_cc" : {"value" : 1, "lo" : 0.5, "hi" : 2}
+}
+parameters = {}
+if not args.setParameterRanges:
+    parameter_ranges = parameter_ranges_default
+else:
+    # Get the dictionary of parameters from the string
+    parameter_ranges = {}
+    for par in args.setParameterRanges.split(':'):
+        poi, _range = par.split('=')
+        lo, hi = (float(x) for x in _range.split(','))
+        parameter_ranges[poi] = {'value' : 1.0, 'lo' : lo, 'hi' : hi}
+
+if args.passonly:
+    regions = ['pass']
+else:
+    regions = ['pass', 'fail']
+
+if args.scheme == "3f":
+    pois = ['l', 'b_bb', 'c_cc']
+elif args.scheme == "5f":
+    pois = ['l', 'c', 'b', 'cc', 'bb']
+wps = ['L', 'M', 'H']
+pts = ['450to500', '500to600', '600toInf']
+# Set the POIs range in the dictionary
+for year, pars in fit_parameters.items():
+    parameters[year] = {}
+    for tagger in AK8Taggers:
+        for wp in wps:
+            for pt in pts:
+                cat = "msd40{}{}wp_Pt-{}".format(tagger, wp, pt)
+                parameters[year][cat] = {}
+                for poi in pois:
+                    if poi in parameter_ranges:
+                        parameters[year][cat][poi] = parameter_ranges[poi]
+                    else:
+                        parameters[year][cat][poi] = parameter_ranges_default[poi]
+
+"""
+print("Parameters:")
+print(json.dumps(parameters, indent=4))
+sys.exit()
+"""
+
+fit = Fit(args.input, args.output, categories, var, args.year, xlim=(-2.4, 6.0), binwidth=args.binwidth, regions=regions, scheme=args.scheme, npoi=args.npoi, frac_effect=args.frac, parameters=parameters)
 if args.mode == "all":
     fit.run_fits("FitDiagnostics")
     fit.run_fits("MultiDimFit")

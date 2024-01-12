@@ -1,7 +1,6 @@
 import os
 import sys
 from time import sleep
-import json
 
 import numpy as np
 import pandas as pd
@@ -9,10 +8,8 @@ import rhalphalib as rl
 import uproot
 import ROOT
 
-from parameters_fit import fit_parameters
 from parameters import AK8Taggers, AK8Taggers_bb, AK8Taggers_cc
 
-regions = ['pass', 'fail']
 unc_lumi = {
     '2016_PreVFP'  : 1.012,
     '2016_PostVFP' : 1.012,
@@ -38,12 +35,42 @@ def iserror(func, *args, **kw):
         return False
     except Exception:
         return True
+    
+def get_correlation_matrix(fit_s, scheme='3f'):
+    parameters = fit_s.floatParsFinal()
+    parameter_names = [parameters.at(i).GetName() for i in range(parameters.getSize())]
+    if scheme == '3f':
+        pois = ['b_bb', 'c_cc', 'l']
+    elif scheme == '5f':
+        pois = ['bb', 'cc', 'b', 'c', 'l']
+    else:
+        raise NotImplementedError
+    rows = []
+    for poi_x in pois:
+        column = []
+        i = parameter_names.index(poi_x)
+        for poi_y in l:
+            j = parameter_names.index(poi_y)
+            column.append(fit_s.correlation(parameters.at(i), parameters.at(j)))
+        rows.append(column)
+    C = np.array(rows)
+    return C
+
+def get_correlation(fit_s, par1, par2):
+    parameters = fit_s.floatParsFinal()
+    parameter_names = [parameters.at(i).GetName() for i in range(parameters.getSize())]
+    i = parameter_names.index(par1)
+    j = parameter_names.index(par2)
+    return fit_s.correlation(parameters.at(i), parameters.at(j))
 
 class Fit():
-    def __init__(self, input, output, categories, var, year, xlim, binwidth, scheme='3f'):
+    def __init__(self, input, output, categories, var, year, xlim, binwidth, regions=['pass', 'fail'], scheme='3f', npoi=3, frac_effect=1.2, parameters={}):
         self.input = input
         self.output = output
         self.scheme = scheme
+        assert type(npoi) == int, "The number of POIs has to be an integer number!"
+        assert npoi in [1, 3], "The number of POIs has to be 1 or 3!"
+        self.npoi = npoi
         self.year = year
         self.var = var
         self.lo = xlim[0]
@@ -52,6 +79,15 @@ class Fit():
         self.define_flavors()
         self.templates = np.load(os.path.abspath(self.input), allow_pickle=True)
         self.categories = categories
+        self.regions = regions
+        if (len(self.regions) == 1) & (self.regions[0] == 'pass'):
+            self.passonly = True
+        elif (len(self.regions) == 2):
+            self.passonly = False
+        else:
+            raise NotImplementedError
+        self.frac_effect = frac_effect
+        self.parameters = parameters[self.year]
         """
         if self.scheme == '3f':
             self.fitResults = {
@@ -69,6 +105,7 @@ class Fit():
         self.define_bins()
         self.define_observable()
         self.initialize_models_dict()
+        self.define_signal_name()
         self.load_parameters()
         self.define_independent_parameters()
         self.define_nuisance_parameters()
@@ -103,7 +140,8 @@ class Fit():
         self.categories_region['pass'] = list( filter( lambda c : 'pass' in c, self.categories ) )
         if len(self.categories_region['pass']) == 0:
             sys.exit("No 'pass' region found in categories' list")
-        self.categories_region['fail'] = [c.replace('pass', 'fail') for c in self.categories_region['pass']]
+        if not self.passonly:
+            self.categories_region['fail'] = [c.replace('pass', 'fail') for c in self.categories_region['pass']]
         self.models = {}
         for region in ['pass']:
             categories = self.categories_region[region]
@@ -113,9 +151,10 @@ class Fit():
                 self.models[model_name] = rl.Model("sfModel")
 
     def load_parameters(self):
-        self.parameters = fit_parameters[self.year]
         for model_name in self.models.keys():
             if not model_name in self.parameters.keys():
+                print(self.parameters.keys())
+                raise Exception("The model '{}' is not defined in the parameters dictionary".format(model_name))
                 self.parameters[model_name] = {}
                 for flavor in self.flavors:
                     self.parameters[model_name][flavor] = {'value' : 1., 'lo' : 0.5, 'hi' : 2.}
@@ -138,10 +177,7 @@ class Fit():
             self.nuisance_shapes[model_name]["psWeight_isr"] = rl.NuisanceParameter("psWeight_isr", "shape")
             self.nuisance_shapes[model_name]["psWeight_fsr"] = rl.NuisanceParameter("psWeight_fsr", "shape")
             self.nuisance_shapes[model_name]["QCDFlvCompos"] = rl.NuisanceParameter("QCDFlvCompos", "shape")
-            self.nuisance_shapes[model_name]["frac_bb"] = rl.NuisanceParameter("frac_bb", "shape")
-            self.nuisance_shapes[model_name]["frac_cc"] = rl.NuisanceParameter("frac_cc", "shape")
-            self.nuisance_shapes[model_name]["frac_l"] = rl.NuisanceParameter("frac_l", "shape")
-            self.frac_effect = 0.2
+            #self.nuisance_shapes[model_name]["reweigh"] = rl.NuisanceParameter("reweigh", "shape")
             if self.year != '2018':
                 self.nuisance_shapes[model_name]["sf_L1prefiring"] = rl.NuisanceParameter("sf_L1prefiring", "shape")
 
@@ -151,25 +187,39 @@ class Fit():
             self.nuisance_lnN[model_name] = {}
             self.nuisance_lnN_effect[model_name] = {}
             self.nuisance_lnN[model_name]["lumi"] = rl.NuisanceParameter("lumi", "lnN")
+            self.nuisance_lnN[model_name]["frac_bb"] = rl.NuisanceParameter("frac_bb", "lnN")
+            self.nuisance_lnN[model_name]["frac_cc"] = rl.NuisanceParameter("frac_cc", "lnN")
+            self.nuisance_lnN[model_name]["frac_l"] = rl.NuisanceParameter("frac_l", "lnN")
             self.nuisance_lnN_effect[model_name]["lumi"] = unc_lumi[self.year]
+            self.nuisance_lnN_effect[model_name]["frac_bb"] = self.frac_effect
+            self.nuisance_lnN_effect[model_name]["frac_cc"] = self.frac_effect
+            self.nuisance_lnN_effect[model_name]["frac_l"] = self.frac_effect
 
     def define_frozen_parameters(self):
         self.freeze = {}
-        for model_name in self.models.keys():
-            self.freeze[model_name] = []
-            for name, par in self.parameters[model_name].items():
-                if par['lo'] == par['hi']:
-                    self.freeze[model_name].append(name)
-            #print(model_name, ": Freeze parameters :", self.freeze)
+        if self.npoi == 3:
+            for model_name in self.models.keys():
+                self.freeze[model_name] = []
+                for name, par in self.parameters[model_name].items():
+                    if par['lo'] == par['hi']:
+                        self.freeze[model_name].append(name)
+                #print(model_name, ": Freeze parameters :", self.freeze)
+        elif self.npoi == 1:
+            for model_name in self.models.keys():
+                self.freeze[model_name] = []
+                for name, par in self.parameters[model_name].items():
+                    if not name == self.signal_name[model_name]:
+                        self.freeze[model_name].append(name)
 
-    def define_signal_name(self, model_name):
-        self.tagger = [tagger for tagger in AK8Taggers if tagger in model_name][0]
-        if self.tagger in AK8Taggers_bb:
-            self.signal_name[model_name] = ["b_bb" if self.scheme == '3f' else "bb"][0]
-        elif self.tagger in AK8Taggers_cc:
-            self.signal_name[model_name] = ["c_cc" if self.scheme == '3f' else "cc"][0]
-        else:
-            raise Exception("There is no known tagger to calibrate in the given category")
+    def define_signal_name(self):
+        for model_name in self.models.keys():
+            self.tagger = [tagger for tagger in AK8Taggers if tagger in model_name][0]
+            if self.tagger in AK8Taggers_bb:
+                self.signal_name[model_name] = ["b_bb" if self.scheme == '3f' else "bb"][0]
+            elif self.tagger in AK8Taggers_cc:
+                self.signal_name[model_name] = ["c_cc" if self.scheme == '3f' else "cc"][0]
+            else:
+                raise Exception("There is no known tagger to calibrate in the given category")
 
     def get_templ(self, histname, sumw2=True):
         h_vals = self.templates[histname][0]
@@ -185,10 +235,9 @@ class Fit():
         self.fitdirs = {}
 
         # Define fit templates for MC and observation
-        for region in regions:
+        for region in self.regions:
             for cat in self.categories_region[region]:
                 model_name = cat.replace(region, '')
-                self.define_signal_name(model_name)
                 channel = rl.Channel("sf{}".format(region))
                 for flavor in self.flavors:
                     flavor_key = flavor.replace('_', '+')
@@ -210,50 +259,45 @@ class Fit():
         for model_name, model in self.models.items():
             for flavor, SF in self.indep_pars[model_name].items():
                 sample_pass = self.models[model_name]['sfpass'][flavor]
-                sample_fail = self.models[model_name]['sffail'][flavor]
-                pass_fail   = sample_pass.getExpectation(nominal=True).sum() / sample_fail.getExpectation(nominal=True).sum()
                 sample_pass.setParamEffect(SF, 1.0 * SF)
-                sample_fail.setParamEffect(SF, (1 - SF) * pass_fail + 1)
+                if not self.passonly:
+                    sample_fail = self.models[model_name]['sffail'][flavor]
+                    pass_fail   = sample_pass.getExpectation(nominal=True).sum() / sample_fail.getExpectation(nominal=True).sum()
+                    sample_fail.setParamEffect(SF, (1 - SF) * pass_fail + 1)
 
         # Define effect of nuisance parameters on the templates
         # N.B.: the nuisance parameters are fully correlated between flavors and in pass/fail regions
-        for region in regions:
+        for region in self.regions:
             for cat in self.categories_region[region]:
                 model_name = cat.replace(region, '')
                 for nuisance_name, nuisance in self.nuisance_shapes[model_name].items():
-                    if nuisance_name == "frac_bb":
-                        sample = self.models[model_name]["sf{}".format(region)][["b_bb" if self.scheme == '3f' else "bb"][0]]
-                        sample.setParamEffect(nuisance, 1+self.frac_effect, 1-self.frac_effect)
-                        continue
-                    elif nuisance_name == "frac_cc":
-                        sample = self.models[model_name]["sf{}".format(region)][["c_cc" if self.scheme == '3f' else "cc"][0]]
-                        sample.setParamEffect(nuisance, 1+self.frac_effect, 1-self.frac_effect)
-                        continue
-                    elif nuisance_name == "frac_l":
-                        sample = self.models[model_name]["sf{}".format(region)]["l"]
-                        sample.setParamEffect(nuisance, 1+self.frac_effect, 1-self.frac_effect)
-                        continue
-                    else:
-                        for flavor in self.flavors:
-                            sample = self.models[model_name]["sf{}".format(region)][flavor]
-                            flavor_key = flavor.replace('_', '+')
-                            histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, "nominal")
-                            histname_up   = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, nuisance.name+"Up")
-                            histname_down = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, nuisance.name+"Down")
-                            h_nominal, _bins, _obs_name = self.get_templ(histname_nominal, sumw2=False)
-                            h_up, _bins, _obs_name = self.get_templ(histname_up, sumw2=False)
-                            h_down, _bins, _obs_name = self.get_templ(histname_down, sumw2=False)
-                            r_up = h_up / h_nominal
-                            r_down = h_down / h_nominal
-                            effect_up = np.where(~(np.isnan(r_up) | np.isinf(r_up)), r_up, 1)
-                            effect_down = np.where(~(np.isnan(r_down) | np.isinf(r_down)), r_down, 1)
-                            effect_down = np.where(effect_down < 0.0, 0.0, effect_down)
-                            sample.setParamEffect(nuisance, effect_up, effect_down)
+                    for flavor in self.flavors:
+                        sample = self.models[model_name]["sf{}".format(region)][flavor]
+                        flavor_key = flavor.replace('_', '+')
+                        histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, "nominal")
+                        histname_up   = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, nuisance.name+"Up")
+                        histname_down = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, nuisance.name+"Down")
+                        h_nominal, _bins, _obs_name = self.get_templ(histname_nominal, sumw2=False)
+                        h_up, _bins, _obs_name = self.get_templ(histname_up, sumw2=False)
+                        h_down, _bins, _obs_name = self.get_templ(histname_down, sumw2=False)
+                        r_up = h_up / h_nominal
+                        r_down = h_down / h_nominal
+                        effect_up = np.where(~(np.isnan(r_up) | np.isinf(r_up)), r_up, 1)
+                        effect_down = np.where(~(np.isnan(r_down) | np.isinf(r_down)), r_down, 1)
+                        effect_down = np.where(effect_down < 0.0, 0.0, effect_down)
+                        sample.setParamEffect(nuisance, effect_up, effect_down)
 
                 for nuisance_name, nuisance in self.nuisance_lnN[model_name].items():
                     for flavor in self.flavors:
                         sample = self.models[model_name]["sf{}".format(region)][flavor]
-                        sample.setParamEffect(nuisance, self.nuisance_lnN_effect[model_name][nuisance_name])
+                        if ( ( nuisance_name == "lumi" ) | 
+                             ( (nuisance_name == "frac_bb") & (flavor == "b_bb") ) |
+                             ( (nuisance_name == "frac_cc") & (flavor == "c_cc") ) |
+                             ( (nuisance_name == "frac_l") & (flavor == "l") ) ):
+                            sample.setParamEffect(nuisance, self.nuisance_lnN_effect[model_name][nuisance_name])
+                        else:
+                            continue
+
         # Save the combine fit models to output folder
         for model_name, model in self.models.items():
             fitdir = os.path.abspath(os.path.join(self.output, 'fitdir', model_name))
@@ -275,7 +319,7 @@ class Fit():
                 POIs = ','.join([self.signal_name[model_name]] + [f.replace('+', '_') for f in self.flavors if not f.replace('+', '_') == self.signal_name[model_name]])
                 combineCommand = '\ncombine -M FitDiagnostics -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 # N.B.: In the MultiDimFit we set the POI to be only the signal SF, so that we can profile it and extract the breakdown of uncertainties
-                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --algo=singles --cminDefaultMinimizerStrategy 0 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, self.signal_name[model_name], extra_args)
+                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --algo=singles --cminDefaultMinimizerStrategy 0 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 setParameters = 'r=1'
                 freezeParameters = 'r'
                 for par in self.freeze[model_name]:
@@ -425,11 +469,14 @@ class Fit():
             fit_s = fitResults.Get('fit_s')
 
             for flavor in self.flavors:
-                if (flavor == POI): continue
+                if (flavor == POI):
+                    for flavor_y in self.flavors:
+                        corr = get_correlation(fit_s, flavor, flavor_y)
+                        columns = columns + ['corr_{}_{}'.format(flavor, flavor_y)]
+                        d.update({'corr_{}_{}'.format(flavor, flavor_y) : corr})
+                    continue
                 par_result = fit_s.floatParsFinal().find(flavor)
-                columns.append(flavor)
-                columns.append('{}Err'.format(flavor))
-                columns.append('SF({})'.format(flavor))
+                columns = columns + [flavor, '{}Err'.format(flavor), 'SF({})'.format(flavor)]
                 columns_for_latex.append('SF({})'.format(flavor))
                 if par_result == None:
                     d.update({flavor : -999, '{}Err'.format(flavor) : -999, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(-999, -999)})
@@ -447,6 +494,18 @@ class Fit():
                 #columns.append('SF({})'.format(flavor))
                 #columns_for_latex.append('SF({})'.format(flavor))
                 d.update({flavor : parVal, '{}Err'.format(flavor) : parErr, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(parVal, parErr)})
+
+            for nuisance_name in ['frac_bb', 'frac_cc', 'frac_l']:
+                par_result = fit_s.floatParsFinal().find(nuisance_name)
+                columns = columns + [nuisance_name, '{}Err'.format(nuisance_name)]
+                columns_for_latex.append(nuisance_name)
+                if par_result == None:
+                    d.update({nuisance_name : -999, '{}Err'.format(nuisance_name) : -999})
+                    continue
+                parVal = par_result.getVal()
+                parErr = par_result.getAsymErrorHi()
+                d.update({nuisance_name : parVal, '{}Err'.format(nuisance_name) : parErr})
+
             f.close()
             df = pd.DataFrame(data=d)
             filename = os.path.join(self.fitdirs[model_name], "fitResults.csv")
