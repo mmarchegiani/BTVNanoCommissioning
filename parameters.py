@@ -755,7 +755,7 @@ flavors_order = {
     #'particleNetMD_Xbb' : ['l', 'c_cc', 'b_bb'],
     #'particleNetMD_Xcc' : ['l', 'b_bb', 'c_cc'],
     }
-flavors_color = {'l' : 'blue', 'b' : 'red', 'c' : 'green', 'bb' : 'cyan', 'cc' : 'magenta', 'b+bb' : 'cyan', 'c+cc' : 'magenta'}
+flavors_color = {'l' : 'blue', 'b' : 'red', 'c' : 'green', 'bb' : 'cyan', 'cc' : 'magenta', 'b_bb' : 'cyan', 'c_cc' : 'magenta'}
 flavor_opts = {
     'facecolor': [flavors_color[f] for f in flavors_color.keys()],
     'edgecolor': 'black',
