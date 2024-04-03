@@ -19,16 +19,6 @@ unc_lumi = {
 
 epsilon = 1e-3
 
-def merge_bins(values, rebin_size):
-    values_rebinned = []
-    for i in np.arange(0, len(values), rebin_size):
-        values_sum = 0
-        for j in range(rebin_size):
-            values_sum += values[i+j]
-        values_rebinned.append(values_sum)
-
-    return np.array(values_rebinned)
-
 def iserror(func, *args, **kw):
     try:
         func(*args, **kw)
@@ -116,6 +106,22 @@ class Fit():
         #self.run_fits()
         #self.save_results()
 
+    def status(self, model_name):
+        file_status = os.path.join(self.fitdirs[model_name], 'STATUS')
+        i = 0
+        while not os.path.exists(file_status):
+            i+=1
+            continue
+        with open(file_status, 'r') as f:
+            status = f.readline().strip('\n')
+        return status
+
+    def is_done(self, model_name):
+        return self.status(model_name) in ["DONE", "FAILED"]
+
+    def all_done(self):
+        return all(self.is_done(model_name) for model_name in self.models.keys())
+
     def define_flavors(self):
         if self.scheme == '3f':
             self.flavors = ['b_bb', 'c_cc', 'l']
@@ -125,12 +131,21 @@ class Fit():
             raise Exception("Flavor scheme '{}' is not allowed.".format(self.scheme))
 
     def define_bins(self):
-        # Here we assume a 1D histogram therefore we take the first axis
-        #num, start, stop = ( self.cfg['variables'][self.var]['axes'][0][key] for key in ['bins', 'start', 'stop'] )
-        nbins = 12/self.binwidth
-        self.bins = np.arange(self.lo, self.hi + self.binwidth, self.binwidth)
-        #if (self.lo not in self.bins) | (self.hi not in self.bins):
-        #    raise Exception("The low and high bounds of the interval have to be present in the new bin edges.")
+        # Here we define the bin edges according to the low and high limits of the observable and the bin width
+        self.bins = np.round(np.arange(self.lo, self.hi + self.binwidth, self.binwidth), 3)
+        bins_old = np.round(np.arange(-2.4, 6.0 + self.binwidth, self.binwidth), 3)
+        print(bins_old)
+        print(self.bins)
+        i_lo = np.where(bins_old == self.lo)[0][0]
+        i_hi = np.where(bins_old == self.hi)[0][0]
+        # Here we adjust the h_sumw and h_sumw2 according to the bin edges
+        for histname, h in self.templates.items():
+            h_sumw = h[0]
+            h_sumw2 = h[1]
+            # Here we slice the histograms according to the bin edges
+            h_sumw = h_sumw[i_lo:i_hi]
+            h_sumw2 = h_sumw2[i_lo:i_hi]
+            self.templates[histname] = [h_sumw, h_sumw2]
 
     def define_observable(self):
         self.observable = rl.Observable(self.var, self.bins)
@@ -304,6 +319,9 @@ class Fit():
             if not os.path.exists(fitdir):
                 os.makedirs(fitdir)
             model.renderCombine(fitdir)
+            # Create STATUS flag file
+            with open(os.path.join(fitdir, 'STATUS'), 'w') as f:
+                f.write("PENDING\n")
             self.fitdirs[model_name] = fitdir
 
     def build_combine_script(self):
@@ -329,7 +347,10 @@ class Fit():
                 combineCommand = combineCommand.replace('--freezeParameters r', '--freezeParameters {}'.format(freezeParameters))
                 combineCommand_MultiDimFit = combineCommand_MultiDimFit.replace('--setParameters r=1', '--setParameters {}'.format(setParameters))
                 combineCommand_MultiDimFit = combineCommand_MultiDimFit.replace('--freezeParameters r', '--freezeParameters {}'.format(freezeParameters))
+                # Save a STATUS flag file
                 file.write(combineCommand)
+                # Save a STATUS flag file
+                file.write('\necho "DONE" > STATUS\n')
             # Write the commands for the breakdown of uncertainties in the bash script
             parameter_ranges = ":".join("{}=0.5,2".format(poi) for poi in self.flavors)
             combineFile = "higgsCombine_{}.MultiDimFit.mH120.root".format(model_name)
@@ -442,8 +463,11 @@ class Fit():
                 lines = ["FAILED_FIT\n", "{}\n".format(len(results)), "{}\n".format(results)]
                 with open(os.path.join(self.fitdirs[model_name], "FAILED_FIT"), 'w') as f:
                     f.writelines(lines)
+                # UPDATE STATUS
+                with open(os.path.join(fitdir, 'STATUS'), 'w') as f:
+                    f.write("FAILED\n")
                 print("FIT FAILED : ", model_name)
-                return
+                continue
 
             combineCont, low, high, temp = results
             combineErrUp = high - combineCont
@@ -509,5 +533,9 @@ class Fit():
             f.close()
             df = pd.DataFrame(data=d)
             filename = os.path.join(self.fitdirs[model_name], "fitResults.csv")
-            print("Saving fit output in {}".format(filename))
-            df.to_csv(filename, columns=columns, mode='w', header=True)
+            try:
+                print("Saving fit output in {}".format(filename))
+                df.to_csv(filename, columns=columns, mode='w', header=True)
+            except Exception as e:
+                print("Error saving fit output in {}".format(filename))
+                print(e)
