@@ -7,7 +7,7 @@ from pocket_coffea.lib.leptons import lepton_selection
 
 from config.fatjet_base.custom.leptons import lepton_selection_noniso
 from config.fatjet_base.custom.jets import jet_selection
-from lib.sv import sv_matched_to_fatjet, get_sumcorrmass
+from lib.sv import get_corrmass, sv_matched_to_fatjet, get_sumcorrmass, get_sv1mass
 from lib.muon_matching import muons_matched_to_fatjet, muon_matched_to_subjet
 from pocket_coffea.lib.hist_manager import Axis
 
@@ -112,6 +112,10 @@ class fatjetBaseProcessor(BaseProcessorABC):
 
     def define_common_variables_after_presel(self, variation):
         
+        # Correct SV mass for mis-aligment between the SV momentum and the PV-SV direction.
+        # This takes into account particles that are not reconstructed in the SV reconstruction.
+        # The corrected mass is assigned to the SV.mass branch
+        self.events.SV = ak.with_field(self.events.SV, get_corrmass(self.events.SV), "mass")
         # Match SV to AK8 jets
         self.events["SVMatchedToFatJetGood"] = sv_matched_to_fatjet(self.events)
 
@@ -119,56 +123,23 @@ class fatjetBaseProcessor(BaseProcessorABC):
         Xbb = self.events.FatJetGood.particleNetMD_Xbb
         Xcc = self.events.FatJetGood.particleNetMD_Xcc
         QCD = self.events.FatJetGood.particleNetMD_QCD
-        sumcorrSVmass, logsumcorrSVmass = get_sumcorrmass(self.events)
+        sumcorrSVmass, logsumcorrSVmass = get_sumcorrmass(self.events.SVMatchedToFatJetGood)
+        # Order SV by dxySig and compute the leading SV mass and its log
+        #index_max_pt = ak.argsort(self.events.SVMatchedToFatJetGood.pt, ascending=False)
+        index_max_dxySig = ak.argsort(self.events.SVMatchedToFatJetGood.dxySig, ascending=False)
+        sv1mass, logsv1mass = get_sv1mass(self.events.SVMatchedToFatJetGood[index_max_dxySig])
         fatjet_fields = {
             "nSVMatchedToFatJetGood": ak.count(self.events["SVMatchedToFatJetGood"].pt, axis=2),
             "particleNetMD_Xbb_QCD" : Xbb / (Xbb + QCD),
             "particleNetMD_Xcc_QCD" : Xcc / (Xcc + QCD),
             "sumcorrSVmass" : sumcorrSVmass,
             "logsumcorrSVmass" : logsumcorrSVmass,
+            "sv1mass" : sv1mass,
+            "logsv1mass" : logsv1mass,
         }
 
         for field, value in fatjet_fields.items():
             self.events["FatJetGood"] = ak.with_field(self.events.FatJetGood, value, field)
-
-        """
-        sv_in_jet1 = self.events.SV[get_sv_in_jet(self.events.FatJetGood, self.events.SV, pos=0)]
-        sv_in_jet2 = self.events.SV[get_sv_in_jet(self.events.FatJetGood, self.events.SV, pos=1)]
-        i1_maxPt     = ak.argsort(sv_in_jet1.pt, ascending=False)
-        i2_maxPt     = ak.argsort(sv_in_jet2.pt, ascending=False)
-        sv_in_jet1_sorted = sv_in_jet1[i1_maxPt]
-        sv_in_jet2_sorted = sv_in_jet2[i2_maxPt]
-
-        sv_fields = {}
-        position = {'jet1' : 0, 'jet2' : 1}
-        for jet_key, sv_in_jet_sorted in zip(['jet1', 'jet2'], [sv_in_jet1_sorted, sv_in_jet2_sorted]):
-            summass, logsummass = get_summass(sv_in_jet_sorted)
-            #projmass, logprojmass = get_projmass(self.events.FatJetGood, sv_in_jet_sorted, pos=position[jet_key])
-            sv1mass, logsv1mass = get_sv1mass(sv_in_jet_sorted)
-            sumcorrmass, logsumcorrmass = get_sumcorrmass(sv_in_jet_sorted)
-            sv_fields[jet_key] = {
-                "summass" : summass,
-                "logsummass" : logsummass,
-                #"projmass" : projmass,
-                #"logprojmass" : logprojmass,
-                "sv1mass" : sv1mass,
-                "logsv1mass" : logsv1mass,
-                "sumcorrmass" : sumcorrmass,
-                "logsumcorrmass" : logsumcorrmass,
-            }
-
-        for field in sv_fields['jet1'].keys():
-            value1_unflattened = ak.unflatten( sv_fields['jet1'][field], counts=1 )
-            value2_unflattened = ak.unflatten( sv_fields['jet2'][field], counts=1 )
-            value_concat = ak.concatenate((value1_unflattened, value2_unflattened), axis=1)
-            # Pad to FatJetGood dims
-            padded = ak.concatenate((value_concat, 
-                                     ak.zeros_like(self.events['FatJetGood'].pt)[:, 2:]), axis=1)
-            # Clip to FatJetGood size
-            padded = padded[ak.local_index(self.events['FatJetGood'].pt)]
-            self.events = ak.with_field(self.events, value_concat, field)
-            self.events['FatJetGood'] = ak.with_field(self.events['FatJetGood'], padded, field)
-        """
 
     def fill_column_accumulators(self, variation):
         pass
