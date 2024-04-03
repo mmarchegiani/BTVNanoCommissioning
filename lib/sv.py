@@ -19,17 +19,6 @@ def sv_matched_to_fatjet(events):
 # when the corresponding mass value is 0. This way, the log(mass) histograms will be filled with
 # -5 when the mass is 0. In any case, for the final fit only the range above -2.5 is considered.
 
-def get_summass(sv, log=True):
-
-    nsv = ak.count(sv.pt, axis=1)
-    summass = sv.p4.sum().mass
-
-    if log:
-        logsummass = ak.where(nsv < 1, -5, np.log(summass))
-        return summass, logsummass
-    else:
-        return summass
-
 def get_projmass(jet, sv, pos, log=True):
 
     if pos == 0:
@@ -48,6 +37,7 @@ def get_projmass(jet, sv, pos, log=True):
     else:
         return projmass
 
+"""
 def get_sv1mass(sv, log=True):
 
     nsv = ak.count(sv.pt, axis=1)
@@ -58,13 +48,29 @@ def get_sv1mass(sv, log=True):
         return sv1mass, logsv1mass
     else:
         return sv1mass
+"""
+
+def get_corrmass(sv):
+
+    corrmass = np.sqrt(sv.p4.mass**2 + sv.p4.p**2 * np.sin(sv.pAngle)**2) + sv.p4.p * np.sin(sv.pAngle)
+
+    return corrmass
+
+def get_sv1mass(sv, log=True):
+
+    sv1mass = ak.firsts(sv.mass, axis=-1)[:,0]
+    sv1mass = ak.where(ak.is_none(sv1mass), 0, sv1mass)
+
+    if log:
+        logsv1mass = np.where(sv1mass == 0, -5, np.log(sv1mass))
+        return sv1mass, logsv1mass
+    else:
+        return sv1mass
+
 
 #def get_sumcorrmass(sv, log=True):
-def get_sumcorrmass(events, log=True):
-    
-    sv = events.SVMatchedToFatJetGood
-    corrmass = np.sqrt(sv.p4.mass**2 + sv.p4.pt**2 * np.sin(sv.pAngle)**2) + sv.p4.pt * np.sin(sv.pAngle)
-    sv['mass'] = corrmass
+def get_sumcorrmass(sv, log=True):
+
     sumcorrmass = sv.p4.sum().mass
 
     if log:
