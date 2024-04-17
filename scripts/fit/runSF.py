@@ -1,9 +1,8 @@
 import os
 import sys
 import re
-from time import sleep
+from copy import deepcopy
 import argparse
-import json
 import pandas as pd
 
 sys.path.append('/work/mmarcheg/BTV/BTVNanoCommissioning')
@@ -36,6 +35,10 @@ parser.add_argument('--dim', type=int, default=1, required=False)
 parser.add_argument('--passonly', action="store_true", required=False)
 parser.add_argument('--no-jobs', action="store_true", required=False)
 parser.add_argument('--xlim', type=float, nargs=2, default=(-2.4, 6.0), required=False)
+parser.add_argument('--adapt_light', action="store_true", required=False)
+parser.add_argument('--step_light', type=float, default=0.1, required=False)
+parser.add_argument('--retries', type=int, default=8, required=False)
+parser.add_argument('--freeze_light', action="store_true", required=False)
 
 args = parser.parse_args()
 
@@ -97,19 +100,24 @@ for year, pars in fit_parameters.items():
                     else:
                         parameters[year][cat][poi] = parameter_ranges_default[poi]
 
-"""
-print("Parameters:")
-print(json.dumps(parameters, indent=4))
-sys.exit()
-"""
-
-fit = Fit(args.input, args.output, categories, var, args.year, xlim=args.xlim, binwidth=args.binwidth, regions=regions, scheme=args.scheme, npoi=args.npoi, frac_effect=args.frac, parameters=parameters)
+fit = Fit(args.input,
+          args.output,
+          categories,
+          var,
+          args.year,
+          xlim=args.xlim,
+          binwidth=args.binwidth,
+          regions=regions,
+          scheme=args.scheme,
+          npoi=args.npoi,
+          frac_effect=args.frac,
+          parameters=parameters
+          )
 if args.mode == "all":
     fit.run_fits("FitDiagnostics")
     fit.run_fits("MultiDimFit")
 elif args.mode == "FitDiagnostics":
     fit.run_fits(args.mode, job=not args.no_jobs)
-    fit.save_results(args.mode)
 elif args.mode == "MultiDimFit":
     fit.run_fits(args.mode, job=not args.no_jobs)
 
@@ -121,6 +129,58 @@ if args.mode == "FitDiagnostics":
     # Wait until all fits are done
     while not fit.all_done():
         continue
+
+    idx_iteration = 0
+    if args.adapt_light:
+        categories_at_boundary = [cat for cat in categories if fit.is_at_boundary(cat.replace("pass", "").replace("fail", ""))]
+        for idx_iteration in range(args.retries):
+            l_lo = 0 + args.step_light*idx_iteration
+            l_hi = 2 - args.step_light*idx_iteration
+            print("Adapting light POI range: l={},{}".format(l_lo, l_hi))
+            parameters_alternative = deepcopy(parameters)
+            for year in parameters_alternative:
+                for cat in categories_at_boundary:
+                    model_name = cat.replace("pass", "").replace("fail", "")
+                    parameters_alternative[year][model_name]['l']['lo'] = l_lo
+                    parameters_alternative[year][model_name]['l']['hi'] = l_hi
+
+            fit_alternative = Fit(args.input,
+                                  os.path.join(args.output, "iteration_{}".format(idx_iteration)),
+                                  categories_at_boundary,
+                                  var,
+                                  args.year,
+                                  xlim=args.xlim,
+                                  binwidth=args.binwidth,
+                                  regions=regions,
+                                  scheme=args.scheme,
+                                  npoi=args.npoi,
+                                  frac_effect=args.frac,
+                                  parameters=parameters_alternative
+                                  )
+            fit_alternative.run_fits(args.mode, job=not args.no_jobs)
+            if fit_alternative.any_at_boundary():
+                categories_at_boundary = [cat for cat in categories_at_boundary if fit_alternative.is_at_boundary(cat.replace("pass", "").replace("fail", ""))]
+            else:
+                break
+    if args.freeze_light:
+        categories_at_boundary = [cat for cat in categories if fit.is_at_boundary(cat.replace("pass", "").replace("fail", ""))]
+        categories_failed = [cat for cat in categories if fit.is_failed(cat.replace("pass", "").replace("fail", ""))]
+        if len(categories_at_boundary + categories_failed) > 0:
+            fit_alternative = Fit(args.input,
+                                os.path.join(args.output, "freeze_light"),
+                                categories_at_boundary + categories_failed,
+                                var,
+                                args.year,
+                                xlim=args.xlim,
+                                binwidth=args.binwidth,
+                                regions=regions,
+                                scheme=args.scheme,
+                                npoi=args.npoi,
+                                frac_effect=args.frac,
+                                parameters=parameters,
+                                freeze_light=args.freeze_light
+                                )
+            fit_alternative.run_fits(args.mode, job=not args.no_jobs)
 
     for model_name, folder in fit.fitdirs.items():
         file_results = os.path.join(folder, "fitResults.csv")
@@ -140,7 +200,89 @@ if args.mode == "FitDiagnostics":
                 kwargs = {'mode' : 'w', 'header' : True}
                 first_cc = False
         df.to_csv(file_results_all, **kwargs)
+        print("Results saved in file {}".format(file_results_all))
 
     print("Corrupted folders:")
     for folder in folders_corrupted:
         print(folder)
+
+    if args.adapt_light:
+        first_bb = True
+        first_cc = True
+        folders_corrupted = []
+        for model_name, folder in fit.fitdirs.items():
+            file_results = os.path.join(folder, "fitResults.csv")
+
+            # Get results from the fitResults.csv file in the latest iteration folder
+            indices = range(args.retries)
+            indices.reverse()
+            for idx_iteration in indices:
+                folder_alternative = folder.replace("fitdir", "iteration_{}/fitdir".format(idx_iteration))
+                if os.path.exists(folder_alternative):
+                    print("Reading results in alternative folder {}".format(folder_alternative))
+                    file_results = os.path.join(folder_alternative, "fitResults.csv")
+                    break
+
+            if not os.path.exists(file_results):
+                folders_corrupted.append(folder)
+                continue
+            print("Reading results in file {}".format(file_results))
+            df = pd.read_csv(file_results)
+            kwargs = {'mode' : 'a', 'header' : False}
+            if any(tagger in model_name for tagger in AK8Taggers_bb):
+                file_results_alternative = os.path.join(args.output, "fitResults_alternative_bb.csv")
+                if first_bb:
+                    kwargs = {'mode' : 'w', 'header' : True}
+                    first_bb = False
+            elif any(tagger in model_name for tagger in AK8Taggers_cc):
+                file_results_alternative = os.path.join(args.output, "fitResults_alternative_cc.csv")
+                if first_cc:
+                    kwargs = {'mode' : 'w', 'header' : True}
+                    first_cc = False
+            df.to_csv(file_results_alternative, **kwargs)
+            print("Results saved in file {}".format(file_results_alternative))
+
+        print("Corrupted folders:")
+        for folder in folders_corrupted:
+            print(folder)
+
+    if args.freeze_light:
+        first_bb = True
+        first_cc = True
+        folders_corrupted = []
+        for model_name, folder in fit.fitdirs.items():
+            file_results = os.path.join(folder, "fitResults.csv")
+
+            # Get results from the fitResults.csv file in the latest iteration folder
+            indices = range(args.retries)
+            indices.reverse()
+            folder_alternative = folder.replace("fitdir", "freeze_light/fitdir")
+            if os.path.exists(folder_alternative):
+                print("Reading results in alternative folder {}".format(folder_alternative))
+                file_results = os.path.join(folder_alternative, "fitResults.csv")
+
+            if not os.path.exists(file_results):
+                folders_corrupted.append(folder)
+                continue
+            print("Reading results in file {}".format(file_results))
+            df = pd.read_csv(file_results)
+            columns_to_drop = ["corr_b_bb_l", "corr_c_cc_l"]
+            columns_filtered = list(filter(lambda x : x not in columns_to_drop, df.columns))
+            df = df[columns_filtered]
+            kwargs = {'mode' : 'a', 'header' : False}
+            if any(tagger in model_name for tagger in AK8Taggers_bb):
+                file_results_alternative = os.path.join(args.output, "fitResults_freeze_light_bb.csv")
+                if first_bb:
+                    kwargs = {'mode' : 'w', 'header' : True}
+                    first_bb = False
+            elif any(tagger in model_name for tagger in AK8Taggers_cc):
+                file_results_alternative = os.path.join(args.output, "fitResults_freeze_light_cc.csv")
+                if first_cc:
+                    kwargs = {'mode' : 'w', 'header' : True}
+                    first_cc = False
+            df.to_csv(file_results_alternative, **kwargs)
+            print("Results saved in file {}".format(file_results_alternative))
+
+        print("Corrupted folders:")
+        for folder in folders_corrupted:
+            print(folder)
