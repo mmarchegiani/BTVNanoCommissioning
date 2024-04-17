@@ -1,6 +1,7 @@
 import os
 import sys
 from time import sleep
+import json
 
 import numpy as np
 import pandas as pd
@@ -54,7 +55,7 @@ def get_correlation(fit_s, par1, par2):
     return fit_s.correlation(parameters.at(i), parameters.at(j))
 
 class Fit():
-    def __init__(self, input, output, categories, var, year, xlim, binwidth, regions=['pass', 'fail'], scheme='3f', npoi=3, frac_effect=1.2, parameters={}):
+    def __init__(self, input, output, categories, var, year, xlim, binwidth, regions=['pass', 'fail'], scheme='3f', npoi=3, frac_effect=1.2, parameters={}, epsilon_boundary=0.01, freeze_light=False, threshold_light=0.05):
         self.input = input
         self.output = output
         self.scheme = scheme
@@ -78,6 +79,9 @@ class Fit():
             raise NotImplementedError
         self.frac_effect = frac_effect
         self.parameters = parameters[self.year]
+        self.epsilon_boundary = epsilon_boundary
+        self.freeze_light = freeze_light
+        self.threshold_light = threshold_light
         """
         if self.scheme == '3f':
             self.fitResults = {
@@ -103,11 +107,16 @@ class Fit():
         self.build_fit_models()
         self.build_combine_script()
         self.build_job_submission_script()
-        #self.run_fits()
-        #self.save_results()
+
+    def write_status(self, model_name, status):
+        with open(os.path.join(self.fitdirs[model_name], 'STATUS'), 'w') as f:
+            f.write("{}\n".format(status))
 
     def status(self, model_name):
-        file_status = os.path.join(self.fitdirs[model_name], 'STATUS')
+        try:
+            file_status = os.path.join(self.fitdirs[model_name], 'STATUS')
+        except:
+            print("KEYS: ", self.fitdirs.keys())
         i = 0
         while not os.path.exists(file_status):
             i+=1
@@ -117,10 +126,33 @@ class Fit():
         return status
 
     def is_done(self, model_name):
-        return self.status(model_name) in ["DONE", "FAILED"]
+        return self.status(model_name) in ["DONE", "FAILED", "BOUNDARY"]
 
     def all_done(self):
         return all(self.is_done(model_name) for model_name in self.models.keys())
+
+    def is_at_boundary(self, model_name):
+        return self.status(model_name) in ["BOUNDARY"]
+
+    def any_at_boundary(self):
+        return any(self.is_at_boundary(model_name) for model_name in self.models.keys())
+
+    def is_failed(self, model_name):
+        return self.status(model_name) in ["FAILED"]
+    
+    def get_light_fraction(self, cat):
+        histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, "l", "nominal")
+        h_light, _bins, _obs_name = self.get_templ(histname_nominal, sumw2=False)
+        h_all = h_light
+        for flavor in self.flavors:
+            if flavor == "l": continue
+            flavor_key = flavor.replace('_', '+')
+            histname = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, "nominal")
+            h, _bins, _obs_name = self.get_templ(histname, sumw2=False)
+            h_all = h_all + h
+        print("h_light", sum(h_light))
+        print("h_all", sum(h_all))
+        return sum(h_light) / sum(h_all)
 
     def define_flavors(self):
         if self.scheme == '3f':
@@ -265,6 +297,13 @@ class Fit():
                     sample.autoMCStats(uncertainty_type='poisson')
                     channel.addSample(sample)
 
+                # Freeze light template if the fraction is below a certain threshold
+                if self.freeze_light and (region == 'pass'):
+                    light_fraction = self.get_light_fraction(cat)
+                    print(model_name, ":", light_fraction)
+                    if light_fraction < self.threshold_light:
+                        self.freeze[model_name].append('l')
+
                 template_obs = self.get_templ("{}_{}_{}_DATA".format(self.var, self.year, cat), sumw2=False)
                 channel.setObservation(template_obs)
 
@@ -320,9 +359,13 @@ class Fit():
                 os.makedirs(fitdir)
             model.renderCombine(fitdir)
             # Create STATUS flag file
-            with open(os.path.join(fitdir, 'STATUS'), 'w') as f:
-                f.write("PENDING\n")
             self.fitdirs[model_name] = fitdir
+            self.write_status(model_name, "PENDING")
+
+        # Save the parameter values to output folder in a json file
+        for model_name, model in self.models.items():
+            with open(os.path.join(self.fitdirs[model_name], 'parameters.json'), 'w') as f:
+                json.dump(self.parameters[model_name], f)
 
     def build_combine_script(self):
         for model_name, model in self.models.items():
@@ -335,9 +378,9 @@ class Fit():
                 extra_args += "--stepSize=0.001 --X-rtd=MINIMIZER_analytic --X-rtd MINIMIZER_MaxCalls=9999999 --cminFallbackAlgo Minuit2,Migrad,0:0.2 --X-rtd FITTER_NEW_CROSSING_ALGO --X-rtd FITTER_NEVER_GIVE_UP --X-rtd FITTER_BOUND"
                 #POIs = self.signal_name[model_name].replace('+', '_')
                 POIs = ','.join([self.signal_name[model_name]] + [f.replace('+', '_') for f in self.flavors if not f.replace('+', '_') == self.signal_name[model_name]])
-                combineCommand = '\ncombine -M FitDiagnostics -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
+                combineCommand = '\ncombine -M FitDiagnostics -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 2 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 # N.B.: In the MultiDimFit we set the POI to be only the signal SF, so that we can profile it and extract the breakdown of uncertainties
-                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --algo=singles --cminDefaultMinimizerStrategy 0 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
+                combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --algo=singles --cminDefaultMinimizerStrategy 2 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 setParameters = 'r=1'
                 freezeParameters = 'r'
                 for par in self.freeze[model_name]:
@@ -415,6 +458,8 @@ class Fit():
             print("parameters:", self.parameters[model_name])
             os.system(command)
         os.chdir(parent_dir)
+        if mode == "FitDiagnostics":
+            self.save_results("FitDiagnostics")
 
     def save_scans(self, model_name, fitdir):
         combineFile = "higgsCombine_{}.MultiDimFit.mH120.root".format(model_name)
@@ -464,8 +509,7 @@ class Fit():
                 with open(os.path.join(self.fitdirs[model_name], "FAILED_FIT"), 'w') as f:
                     f.writelines(lines)
                 # UPDATE STATUS
-                with open(os.path.join(fitdir, 'STATUS'), 'w') as f:
-                    f.write("FAILED\n")
+                self.write_status(model_name, "FAILED")
                 print("FIT FAILED : ", model_name)
                 continue
 
@@ -485,6 +529,12 @@ class Fit():
                 'SF({})'.format(POI) : ['{}$^{{+{}}}_{{-{}}}$'.format(combineCont, combineErrUp, combineErrDown)]}
 
             value, lo, hi = (self.parameters[model_name][POI]['value'], self.parameters[model_name][POI]['lo'], self.parameters[model_name][POI]['hi'])
+
+            # Check if the fit is at the boundary
+            if (abs(combineCont - combineErrDown - lo) < self.epsilon_boundary) | (abs(combineCont + combineErrUp - hi) < self.epsilon_boundary):
+                self.write_status(model_name, "BOUNDARY")
+                print("FIT AT BOUNDARY : ", model_name)
+
             f = open(os.path.join(fitdir, "fitResults_{}Pt.txt".format(model_name)), 'w')
             lineIntro = 'Best fit '
             firstline = '{}{}: {}  -{}/+{}  (68%  CL)  range = [{}, {}]\n'.format(lineIntro, POI, combineCont, combineErrDown, combineErrUp, lo, hi)
@@ -495,6 +545,7 @@ class Fit():
             for flavor in self.flavors:
                 if (flavor == POI):
                     for flavor_y in self.flavors:
+                        if flavor_y in self.freeze[model_name]: continue
                         corr = get_correlation(fit_s, flavor, flavor_y)
                         columns = columns + ['corr_{}_{}'.format(flavor, flavor_y)]
                         d.update({'corr_{}_{}'.format(flavor, flavor_y) : corr})
