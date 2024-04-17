@@ -373,8 +373,7 @@ class Fit():
             script_MultiDimFit = os.path.join(self.fitdirs[model_name], 'build_MultiDimFit.sh')
             os.system("cp {} {}".format(script_FitDiagnostics, script_MultiDimFit))
             with open(script_FitDiagnostics, 'a') as file:
-                extra_args = ""
-                #extra_args = "--robustHesse=1 "
+                extra_args = "--robustHesse=1 "
                 extra_args += "--stepSize=0.001 --X-rtd=MINIMIZER_analytic --X-rtd MINIMIZER_MaxCalls=9999999 --cminFallbackAlgo Minuit2,Migrad,0:0.2 --X-rtd FITTER_NEW_CROSSING_ALGO --X-rtd FITTER_NEVER_GIVE_UP --X-rtd FITTER_BOUND"
                 #POIs = self.signal_name[model_name].replace('+', '_')
                 POIs = ','.join([self.signal_name[model_name]] + [f.replace('+', '_') for f in self.flavors if not f.replace('+', '_') == self.signal_name[model_name]])
