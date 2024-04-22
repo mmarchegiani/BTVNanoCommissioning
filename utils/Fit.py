@@ -27,6 +27,11 @@ def iserror(func, *args, **kw):
     except Exception:
         return True
     
+def compute_chi2(h, h_ref):
+    ndof = len(h)
+    h_ref = h_ref*sum(h)/sum(h_ref)
+    return sum((h-h_ref)**2/h_ref)/ndof
+
 def get_correlation_matrix(fit_s, scheme='3f'):
     parameters = fit_s.floatParsFinal()
     parameter_names = [parameters.at(i).GetName() for i in range(parameters.getSize())]
@@ -51,11 +56,15 @@ def get_correlation(fit_s, par1, par2):
     parameters = fit_s.floatParsFinal()
     parameter_names = [parameters.at(i).GetName() for i in range(parameters.getSize())]
     i = parameter_names.index(par1)
-    j = parameter_names.index(par2)
+    try:
+        j = parameter_names.index(par2)
+    except:
+        print("Parameter {} not found in the list of parameters. The correlation is set to NaN.".format(par2))
+        return np.nan
     return fit_s.correlation(parameters.at(i), parameters.at(j))
 
 class Fit():
-    def __init__(self, input, output, categories, var, year, xlim, binwidth, regions=['pass', 'fail'], scheme='3f', npoi=3, frac_effect=1.2, parameters={}, epsilon_boundary=0.01, freeze_light=False, threshold_light=0.05):
+    def __init__(self, input, output, categories, var, year, xlim, binwidth, regions=['pass', 'fail'], scheme='3f', npoi=3, frac_effect=1.2, parameters={}, epsilon_boundary=0.01, freeze_light=True, threshold_light=0.05, freeze_frac_l=False, freeze_bkg=False, threshold_bkg=0.15, threshold_chi2=1.5):
         self.input = input
         self.output = output
         self.scheme = scheme
@@ -82,20 +91,13 @@ class Fit():
         self.epsilon_boundary = epsilon_boundary
         self.freeze_light = freeze_light
         self.threshold_light = threshold_light
-        """
-        if self.scheme == '3f':
-            self.fitResults = {
-                'b+bb' : os.path.join(os.getcwd(), self.output, 'fitResults_bb.csv'),
-                'c+cc' : os.path.join(os.getcwd(), self.output, 'fitResults_cc.csv'),
-            }
-        elif self.scheme == '5f':
-            self.fitResults = {
-                'bb' : os.path.join(os.getcwd(), self.output, 'fitResults_bb.csv'),
-                'cc' : os.path.join(os.getcwd(), self.output, 'fitResults_cc.csv'),
-            }
-        """
-        #self.fitResults = os.path.join(os.getcwd(), self.output)
+        self.freeze_frac_l = freeze_frac_l
+        self.freeze_bkg = freeze_bkg
+        self.threshold_bkg = threshold_bkg
+        self.threshold_chi2 = threshold_chi2
+
         self.signal_name = {}
+        self.chi2 = {}
         self.define_bins()
         self.define_observable()
         self.initialize_models_dict()
@@ -104,6 +106,7 @@ class Fit():
         self.define_independent_parameters()
         self.define_nuisance_parameters()
         self.define_frozen_parameters()
+        self.compute_and_store_chi2()
         self.build_fit_models()
         self.build_combine_script()
         self.build_job_submission_script()
@@ -140,19 +143,22 @@ class Fit():
     def is_failed(self, model_name):
         return self.status(model_name) in ["FAILED"]
     
-    def get_light_fraction(self, cat):
-        histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, "l", "nominal")
-        h_light, _bins, _obs_name = self.get_templ(histname_nominal, sumw2=False)
-        h_all = h_light
+    def get_fraction(self, flav, cat):
+        histname_nominal = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flav, "nominal")
+        h_flav, _bins, _obs_name = self.get_templ(histname_nominal, sumw2=False)
+        h_all = h_flav
         for flavor in self.flavors:
-            if flavor == "l": continue
             flavor_key = flavor.replace('_', '+')
+            if flavor_key == flav: continue
             histname = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, "nominal")
             h, _bins, _obs_name = self.get_templ(histname, sumw2=False)
             h_all = h_all + h
-        print("h_light", sum(h_light))
+        print("h_flav", sum(h_flav))
         print("h_all", sum(h_all))
-        return sum(h_light) / sum(h_all)
+        return sum(h_flav) / sum(h_all)
+
+    def get_light_fraction(self, cat):
+        return self.get_fraction('l', cat)
 
     def define_flavors(self):
         if self.scheme == '3f':
@@ -278,6 +284,23 @@ class Fit():
             h_sumw2 = self.templates[histname][1]
             return (h_vals, bins, self.observable.name, h_sumw2)
 
+    def compute_and_store_chi2(self, region="pass"):
+        for cat in self.categories_region[region]:
+            model_name = cat.replace(region, '')
+            histname_bb = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, "b+bb", "nominal")
+            histname_cc = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, "c+cc", "nominal")
+            template_bb = self.get_templ(histname_bb)
+            template_cc = self.get_templ(histname_cc)
+            h_bb = template_bb[0]
+            h_cc = template_cc[0]
+            if self.signal_name[model_name] == "b_bb":
+                chi2 = compute_chi2(h_cc, h_bb)
+            elif self.signal_name[model_name] == "c_cc":
+                chi2 = compute_chi2(h_bb, h_cc)
+            else:
+                raise Exception("The signal name is not defined")
+            self.chi2[model_name] = chi2
+
     def build_fit_models(self):
         self.fitdirs = {}
 
@@ -303,6 +326,28 @@ class Fit():
                     print(model_name, ":", light_fraction)
                     if light_fraction < self.threshold_light:
                         self.freeze[model_name].append('l')
+
+                # Freeze background template if the fraction is below a certain threshold and if the chi2 is below a certain threshold
+                if self.freeze_bkg and (region == 'pass'):
+                    print("chi2:", self.chi2[model_name], "threshold:", self.threshold_chi2)
+                    if self.chi2[model_name] < self.threshold_chi2:
+                        print(model_name, ": chi2 below threshold!!!!")
+                        if self.signal_name[model_name] == "b_bb":
+                            flavor_key = "c+cc"
+                            flavor_bkg = "c_cc"
+                        elif self.signal_name[model_name] == "c_cc":
+                            flavor_key = "b+bb"
+                            flavor_bkg = "b_bb"
+                        else:
+                            raise Exception("The signal name is not defined")
+
+                        histname_bkg = "{}_{}_{}_MC_{}_{}".format(self.var, self.year, cat, flavor_key, "nominal")
+                        h_bkg, _bins, _obs_name = self.get_templ(histname_bkg, sumw2=False)
+                        bkg_fraction = self.get_fraction(flavor_key, cat)
+                        print(model_name, ": bkg_fraction =", bkg_fraction, "threshold_bkg =", self.threshold_bkg)
+                        if (bkg_fraction < self.threshold_bkg):
+                            print("Freezing background template for category", cat)
+                            self.freeze[model_name].append(flavor_bkg)
 
                 template_obs = self.get_templ("{}_{}_{}_DATA".format(self.var, self.year, cat), sumw2=False)
                 channel.setObservation(template_obs)
@@ -385,6 +430,9 @@ class Fit():
                 for par in self.freeze[model_name]:
                     setParameters += ',{}=1'.format(par)
                     freezeParameters += ',{}'.format(par)
+                    if self.freeze_frac_l and (par == 'l'):
+                        setParameters += ',frac_l=0'
+                        freezeParameters += ',frac_l'
                 combineCommand = combineCommand.replace('--setParameters r=1', '--setParameters {}'.format(setParameters))
                 combineCommand = combineCommand.replace('--freezeParameters r', '--freezeParameters {}'.format(freezeParameters))
                 combineCommand_MultiDimFit = combineCommand_MultiDimFit.replace('--setParameters r=1', '--setParameters {}'.format(setParameters))
@@ -515,17 +563,13 @@ class Fit():
             combineCont, low, high, temp = results
             combineErrUp = high - combineCont
             combineErrDown = combineCont - low
-            d = {}
 
             POI = self.signal_name[model_name]
             columns = ['year', 'selection', 'wp', 'pt',
                 POI, '{}ErrUp'.format(POI), '{}ErrDown'.format(POI),
-                'SF({})'.format(POI)]
+                'SF({})'.format(POI),
+                'chi2']
             columns_for_latex = ['year', 'pt', 'SF({})'.format(POI)]
-            d = {'year' : [self.year], 'selection' : [model_name], 'tagger' : [self.tagger],
-                'wp' : [wp], 'pt' : [wpt],
-                POI : [combineCont], '{}ErrUp'.format(POI) : [combineErrUp], '{}ErrDown'.format(POI) : [combineErrDown],
-                'SF({})'.format(POI) : ['{}$^{{+{}}}_{{-{}}}$'.format(combineCont, combineErrUp, combineErrDown)]}
 
             value, lo, hi = (self.parameters[model_name][POI]['value'], self.parameters[model_name][POI]['lo'], self.parameters[model_name][POI]['hi'])
 
@@ -534,17 +578,30 @@ class Fit():
                 self.write_status(model_name, "BOUNDARY")
                 print("FIT AT BOUNDARY : ", model_name)
 
-            f = open(os.path.join(fitdir, "fitResults_{}Pt.txt".format(model_name)), 'w')
-            lineIntro = 'Best fit '
-            firstline = '{}{}: {}  -{}/+{}  (68%  CL)  range = [{}, {}]\n'.format(lineIntro, POI, combineCont, combineErrDown, combineErrUp, lo, hi)
-            f.write(firstline)
+            # Get results for main POI from fit_s
             fitResults = ROOT.TFile.Open(os.path.join(fitdir, "fitDiagnostics_{}.root".format(model_name)))
             fit_s = fitResults.Get('fit_s')
+            par_result = fit_s.floatParsFinal().find(POI)
+            parVal = par_result.getVal()
+            parErr = par_result.getErrorHi()
+
+            f = open(os.path.join(fitdir, "fitResults_{}Pt.txt".format(model_name)), 'w')
+            lineIntro = 'Best fit '
+            firstline = '{}{}: {}  -{}/+{}  (68%  CL)  range = [{}, {}]\n'.format(lineIntro, POI, parVal, parErr, parErr, lo, hi)
+            f.write(firstline)
+
+            d = {
+                'year' : [self.year], 'selection' : [model_name], 'tagger' : [self.tagger],
+                'wp' : [wp], 'pt' : [wpt],
+                POI : [parVal], '{}ErrUp'.format(POI) : [parErr], '{}ErrDown'.format(POI) : [parErr],
+                'SF({})'.format(POI) : ['{}$^{{+{}}}_{{-{}}}$'.format(parVal, parErr, parErr)],
+                'chi2' : [self.chi2[model_name]]
+            }
 
             for flavor in self.flavors:
                 if (flavor == POI):
                     for flavor_y in self.flavors:
-                        if flavor_y in self.freeze[model_name]: continue
+                        if flavor_y in ["l"]: continue
                         corr = get_correlation(fit_s, flavor, flavor_y)
                         columns = columns + ['corr_{}_{}'.format(flavor, flavor_y)]
                         d.update({'corr_{}_{}'.format(flavor, flavor_y) : corr})
@@ -556,7 +613,7 @@ class Fit():
                     d.update({flavor : -999, '{}Err'.format(flavor) : -999, 'SF({})'.format(flavor) : r'{}$\pm${}'.format(-999, -999)})
                     continue
                 parVal = par_result.getVal()
-                parErr = par_result.getAsymErrorHi()
+                parErr = par_result.getErrorHi()
                 value, lo, hi = (self.parameters[model_name][flavor]['value'], self.parameters[model_name][flavor]['lo'], self.parameters[model_name][flavor]['hi'])
                 gapSpace = ''.join( (len(lineIntro) + len(POI) - len(flavor) )*[' '])
                 lineResult = '{}{}: {}  -+{}'.format(gapSpace, flavor, parVal, parErr)

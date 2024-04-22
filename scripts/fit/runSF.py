@@ -34,11 +34,16 @@ parser.add_argument('-m', '--mode', type=str, default="FitDiagnostics", choices=
 parser.add_argument('--dim', type=int, default=1, required=False)
 parser.add_argument('--passonly', action="store_true", required=False)
 parser.add_argument('--no-jobs', action="store_true", required=False)
-parser.add_argument('--xlim', type=float, nargs=2, default=(-2.4, 6.0), required=False)
+parser.add_argument('--xlim', type=float, nargs=2, default=(-1.2, 5.2), required=False)
 parser.add_argument('--adapt_light', action="store_true", required=False)
 parser.add_argument('--step_light', type=float, default=0.1, required=False)
 parser.add_argument('--retries', type=int, default=8, required=False)
-parser.add_argument('--freeze_light', action="store_true", required=False)
+parser.add_argument('--freeze_light_extra', action="store_true", required=False)
+parser.add_argument('--threshold_light', type=float, default=0.05, required=False)
+parser.add_argument('--freeze_frac_l', action="store_true", required=False)
+parser.add_argument('--freeze_bkg', action="store_true", required=False)
+parser.add_argument('--threshold_bkg', type=float, default=0.15, required=False)
+parser.add_argument('--threshold_chi2', type=float, default=1.5, required=False)
 
 args = parser.parse_args()
 
@@ -111,7 +116,13 @@ fit = Fit(args.input,
           scheme=args.scheme,
           npoi=args.npoi,
           frac_effect=args.frac,
-          parameters=parameters
+          parameters=parameters,
+          freeze_light=True,
+          threshold_light=args.threshold_light,
+          freeze_frac_l=args.freeze_frac_l,
+          freeze_bkg=args.freeze_bkg,
+          threshold_bkg=args.threshold_bkg,
+          threshold_chi2=args.threshold_chi2
           )
 if args.mode == "all":
     fit.run_fits("FitDiagnostics")
@@ -155,14 +166,18 @@ if args.mode == "FitDiagnostics":
                                   scheme=args.scheme,
                                   npoi=args.npoi,
                                   frac_effect=args.frac,
-                                  parameters=parameters_alternative
+                                  parameters=parameters_alternative,
+                                  freeze_frac_l=args.freeze_frac_l,
+                                  freeze_bkg=args.freeze_bkg,
+                                  threshold_bkg=args.threshold_bkg,
+                                  threshold_chi2=args.threshold_chi2
                                   )
             fit_alternative.run_fits(args.mode, job=not args.no_jobs)
             if fit_alternative.any_at_boundary():
                 categories_at_boundary = [cat for cat in categories_at_boundary if fit_alternative.is_at_boundary(cat.replace("pass", "").replace("fail", ""))]
             else:
                 break
-    if args.freeze_light:
+    if args.freeze_light_extra:
         categories_at_boundary = [cat for cat in categories if fit.is_at_boundary(cat.replace("pass", "").replace("fail", ""))]
         categories_failed = [cat for cat in categories if fit.is_failed(cat.replace("pass", "").replace("fail", ""))]
         if len(categories_at_boundary + categories_failed) > 0:
@@ -178,7 +193,11 @@ if args.mode == "FitDiagnostics":
                                 npoi=args.npoi,
                                 frac_effect=args.frac,
                                 parameters=parameters,
-                                freeze_light=args.freeze_light
+                                freeze_light=True,
+                                freeze_frac_l=args.freeze_frac_l,
+                                freeze_bkg=args.freeze_bkg,
+                                threshold_bkg=args.threshold_bkg,
+                                threshold_chi2=args.threshold_chi2
                                 )
             fit_alternative.run_fits(args.mode, job=not args.no_jobs)
 
@@ -246,7 +265,7 @@ if args.mode == "FitDiagnostics":
         for folder in folders_corrupted:
             print(folder)
 
-    if args.freeze_light:
+    if args.freeze_light_extra:
         first_bb = True
         first_cc = True
         folders_corrupted = []
