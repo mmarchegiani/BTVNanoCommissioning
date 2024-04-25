@@ -42,7 +42,7 @@ parser.add_argument('--freeze_light_extra', action="store_true", required=False)
 parser.add_argument('--threshold_light', type=float, default=0.05, required=False)
 parser.add_argument('--freeze_frac_l', action="store_true", required=False)
 parser.add_argument('--freeze_bkg', action="store_true", required=False)
-parser.add_argument('--threshold_bkg', type=float, default=0.15, required=False)
+parser.add_argument('--threshold_bkg', type=float, default=1.0, required=False)
 parser.add_argument('--threshold_chi2', type=float, default=1.5, required=False)
 
 args = parser.parse_args()
@@ -92,18 +92,38 @@ elif args.scheme == "5f":
 wps = ['L', 'M', 'H']
 pts = ['450to500', '500to600', '600toInf']
 # Set the POIs range in the dictionary
-for year, pars in fit_parameters.items():
-    parameters[year] = {}
-    for tagger in AK8Taggers:
-        for wp in wps:
-            for pt in pts:
-                cat = "msd40{}{}wp_Pt-{}".format(tagger, wp, pt)
-                parameters[year][cat] = {}
-                for poi in pois:
-                    if poi in parameter_ranges:
-                        parameters[year][cat][poi] = parameter_ranges[poi]
-                    else:
-                        parameters[year][cat][poi] = parameter_ranges_default[poi]
+parameters[args.year] = {}
+for tagger in AK8Taggers:
+    for wp in wps:
+        for pt in pts:
+            cat = "msd40{}{}wp_Pt-{}".format(tagger, wp, pt)
+            parameters[args.year][cat] = {}
+            for poi in pois:
+                if poi in parameter_ranges:
+                    parameters[args.year][cat][poi] = parameter_ranges[poi]
+                else:
+                    parameters[args.year][cat][poi] = parameter_ranges_default[poi]
+
+"""
+if args.year == "2016_PreVFP":
+    parameters[args.year]["msd40btagDDBvLV2Hwp_Pt-450to500"]["c_cc"] = {"value" : 1, "lo" : 1, "hi" : 1}
+    parameters[args.year]["msd40particleNetMD_Xbb_QCDLwp_Pt-600toInf"]["c_cc"] = {"value" : 1, "lo" : 1, "hi" : 1}
+"""
+if args.year == "2016_PostVFP":
+    if ("fit_tau21p25_3poi_range_bb05_cc02_l05" in args.output) & ("reweighted" not in args.output):
+        parameters[args.year]["msd40deepTagMD_ZHccvsQCDLwp_Pt-600toInf"]["b_bb"] = {"value" : 1, "lo" : 1, "hi" : 1}
+    if ("fit_tau21p30_3poi_range_bb05_cc02_l05" in args.output) & ("reweighted" not in args.output):
+        parameters[args.year]["msd40deepTagMD_ZHccvsQCDLwp_Pt-600toInf"]["b_bb"] = {"value" : 1, "lo" : 1, "hi" : 1}
+    if ("fit_tau21p30_3poi_range_bb02_cc05_l05" in args.output) & ("reweighted" not in args.output):
+        parameters[args.year]["msd40btagHbbLwp_Pt-450to500"]["c_cc"] = {"value" : 1, "lo" : 1, "hi" : 1}
+    if ("fit_tau21p35_3poi_range_bb05_cc02_l05" in args.output) & ("reweighted" not in args.output):
+        parameters[args.year]["msd40deepTagMD_ZHccvsQCDLwp_Pt-600toInf"]["b_bb"] = {"value" : 1, "lo" : 1, "hi" : 1}
+    if ("fit_tau21p40_3poi_range_bb05_cc02_l05" in args.output) & ("reweighted" not in args.output):
+        parameters[args.year]["msd40deepTagMD_ZHccvsQCDLwp_Pt-600toInf"]["b_bb"] = {"value" : 1, "lo" : 1, "hi" : 1}
+if args.year == "2018":
+    if ("fit_tau21p35_3poi_range_bb02_cc05_l05" in args.output) & ("reweighted" not in args.output):
+        parameters[args.year]["msd40particleNetMD_Xbb_QCDLwp_Pt-450to500"]["c_cc"] = {"value" : 1, "lo" : 1, "hi" : 1}
+        parameters[args.year]["msd40btagHbbHwp_Pt-450to500"]["c_cc"] = {"value" : 1, "lo" : 1, "hi" : 1}
 
 fit = Fit(args.input,
           args.output,
