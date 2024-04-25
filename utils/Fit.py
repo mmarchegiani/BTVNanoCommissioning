@@ -64,7 +64,7 @@ def get_correlation(fit_s, par1, par2):
     return fit_s.correlation(parameters.at(i), parameters.at(j))
 
 class Fit():
-    def __init__(self, input, output, categories, var, year, xlim, binwidth, regions=['pass', 'fail'], scheme='3f', npoi=3, frac_effect=1.2, parameters={}, epsilon_boundary=0.01, freeze_light=True, threshold_light=0.05, freeze_frac_l=False, freeze_bkg=False, threshold_bkg=0.15, threshold_chi2=1.5):
+    def __init__(self, input, output, categories, var, year, xlim, binwidth, regions=['pass', 'fail'], scheme='3f', npoi=3, frac_effect=1.2, parameters={}, epsilon_boundary=0.01, freeze_light=True, threshold_light=0.05, freeze_frac_l=False, freeze_bkg=False, threshold_bkg=1.0, threshold_chi2=1.5):
         self.input = input
         self.output = output
         self.scheme = scheme
@@ -108,6 +108,7 @@ class Fit():
         self.define_frozen_parameters()
         self.compute_and_store_chi2()
         self.build_fit_models()
+        self.save_chi2()
         self.build_combine_script()
         self.build_job_submission_script()
 
@@ -323,15 +324,12 @@ class Fit():
                 # Freeze light template if the fraction is below a certain threshold
                 if self.freeze_light and (region == 'pass'):
                     light_fraction = self.get_light_fraction(cat)
-                    print(model_name, ":", light_fraction)
                     if light_fraction < self.threshold_light:
                         self.freeze[model_name].append('l')
 
                 # Freeze background template if the fraction is below a certain threshold and if the chi2 is below a certain threshold
                 if self.freeze_bkg and (region == 'pass'):
-                    print("chi2:", self.chi2[model_name], "threshold:", self.threshold_chi2)
                     if self.chi2[model_name] < self.threshold_chi2:
-                        print(model_name, ": chi2 below threshold!!!!")
                         if self.signal_name[model_name] == "b_bb":
                             flavor_key = "c+cc"
                             flavor_bkg = "c_cc"
@@ -345,8 +343,8 @@ class Fit():
                         h_bkg, _bins, _obs_name = self.get_templ(histname_bkg, sumw2=False)
                         bkg_fraction = self.get_fraction(flavor_key, cat)
                         print(model_name, ": bkg_fraction =", bkg_fraction, "threshold_bkg =", self.threshold_bkg)
-                        if (bkg_fraction < self.threshold_bkg):
-                            print("Freezing background template for category", cat)
+                        if (bkg_fraction < self.threshold_bkg): 
+                            print("Freezing background template for category {}".format(cat))
                             self.freeze[model_name].append(flavor_bkg)
 
                 template_obs = self.get_templ("{}_{}_{}_DATA".format(self.var, self.year, cat), sumw2=False)
@@ -417,6 +415,8 @@ class Fit():
             script_FitDiagnostics = os.path.join(self.fitdirs[model_name], 'build.sh')
             script_MultiDimFit = os.path.join(self.fitdirs[model_name], 'build_MultiDimFit.sh')
             os.system("cp {} {}".format(script_FitDiagnostics, script_MultiDimFit))
+            setParameters = 'r=1'
+            freezeParameters = 'r'
             with open(script_FitDiagnostics, 'a') as file:
                 extra_args = "--robustHesse=1 "
                 extra_args += "--stepSize=0.001 --X-rtd=MINIMIZER_analytic --X-rtd MINIMIZER_MaxCalls=9999999 --cminFallbackAlgo Minuit2,Migrad,0:0.2 --X-rtd FITTER_NEW_CROSSING_ALGO --X-rtd FITTER_NEVER_GIVE_UP --X-rtd FITTER_BOUND"
@@ -425,8 +425,6 @@ class Fit():
                 combineCommand = '\ncombine -M FitDiagnostics -d model_combined.root --saveWorkspace --name _{} --cminDefaultMinimizerStrategy 2 --robustFit=1 --saveShapes --saveWithUncertainties --saveOverallShapes --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
                 # N.B.: In the MultiDimFit we set the POI to be only the signal SF, so that we can profile it and extract the breakdown of uncertainties
                 combineCommand_MultiDimFit = '\ncombine -M MultiDimFit -d model_combined.root --saveWorkspace --name _{} --algo=singles --cminDefaultMinimizerStrategy 2 --robustFit=1 --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --rMin 1 --rMax 1 {}'.format(model_name, POIs, extra_args)
-                setParameters = 'r=1'
-                freezeParameters = 'r'
                 for par in self.freeze[model_name]:
                     setParameters += ',{}=1'.format(par)
                     freezeParameters += ',{}'.format(par)
@@ -442,20 +440,19 @@ class Fit():
                 # Save a STATUS flag file
                 file.write('\necho "DONE" > STATUS\n')
             # Write the commands for the breakdown of uncertainties in the bash script
-            parameter_ranges = ":".join("{}=0.5,2".format(poi) for poi in self.flavors)
             combineFile = "higgsCombine_{}.MultiDimFit.mH120.root".format(model_name)
-            breakdown_lines = [
-                "combine {} -M MultiDimFit -n .scan.total --algo grid --snapshotName MultiDimFit --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r --setParameterRanges {}\n".format(combineFile, self.signal_name[model_name], parameter_ranges),
-            ]
+            main_fit_line = "combine {} -M MultiDimFit -n .scan.total --algo grid --snapshotName MultiDimFit --redefineSignalPOIs={} --setParameters {} --freezeParameters {}\n".format(combineFile, self.signal_name[model_name], setParameters, freezeParameters)
+
+            breakdown_lines = [main_fit_line]
             nuisances = list(self.nuisance_shapes[model_name].keys()) + list(self.nuisance_lnN[model_name].keys())
             nuisances_to_freeze = []
             for nuisance_name in nuisances:
                 nuisances_to_freeze.append(nuisance_name)
-                combineCommand = "combine {} -M MultiDimFit -n .freeze.{} --algo grid --snapshotName MultiDimFit --redefineSignalPOIs={} --setParameters r=1 --freezeParameters r,{} --setParameterRanges {}\n".format(combineFile, nuisance_name, self.signal_name[model_name], ','.join(nuisances_to_freeze), parameter_ranges)
+                combineCommand = "combine {} -M MultiDimFit -n .freeze.{} --algo grid --snapshotName MultiDimFit --redefineSignalPOIs={} --setParameters {} --freezeParameters {},{}\n".format(combineFile, nuisance_name, self.signal_name[model_name], setParameters, freezeParameters, ','.join(nuisances_to_freeze))
                 breakdown_lines.append(combineCommand + '\n')
             files = ["higgsCombine.freeze.{}.MultiDimFit.mH120.root".format(nuisance_name) for nuisance_name in nuisances]
             others = ' '.join(["{}:{}:{}".format(files[i], nuisances[i], i+2) for i in range(len(files))])
-            scriptName = '/work/mmarcheg/BTVNanoCommissioning/scripts/fit/plot1DScanWithOutput.py'
+            scriptName = '/work/mmarcheg/BTV/BTVNanoCommissioning/scripts/fit/plot1DScanWithOutput.py'
             combineCommand = 'python {} higgsCombine.scan.total.MultiDimFit.mH120.root --main-label "Total Uncert." --others {} --output breakdown --y-max 10 --y-cut 40 --breakdown "{},stat" --POI {}'.format(scriptName, others, ','.join(nuisances), self.signal_name[model_name].replace('+', '_'))
             breakdown_lines.append(combineCommand + '\n')
             
@@ -534,6 +531,11 @@ class Fit():
         #combineCommand = "combine {} -M MultiDimFit -n scan.freeze_all --algo grid --snapshotName MultiDimFit --setParameterRanges r=0,2 --freezeParameters {}".format(combineFile, ','.join(nuisances_to_freeze))
         #print(combineCommand)
         #print("Freezing all nuisances...".format(nuisance_name))
+
+    def save_chi2(self):
+        for model_name, fitdir in self.fitdirs.items():
+            with open(os.path.join(fitdir, "chi2.txt"), 'w') as f:
+                f.write("{}\n".format(self.chi2[model_name]))
 
     def save_results(self, mode):
         for model_name, fitdir in self.fitdirs.items():
